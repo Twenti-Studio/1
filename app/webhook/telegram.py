@@ -767,12 +767,15 @@ async def _cb_confirm_payment(
 
 async def _cb_cancel_order(chat_id: int, user_id: int, message_id: int):
     """Cancel payment order."""
+    # Delete original message (could be text or photo)
+    await delete_telegram_message(chat_id, message_id)
+
     text = (
         "❌ <b>Pesanan Dibatalkan</b>\n\n"
         "Pembayaran telah dibatalkan.\n"
         "Ketik /upgrade kapan saja untuk melihat paket lagi! 😊"
     )
-    await edit_telegram_message(chat_id, message_id, text)
+    await send_telegram_message(chat_id, text)
 
 
 async def _cb_check_payment_status(
@@ -839,12 +842,15 @@ async def _cb_check_payment_status(
 
 async def _cb_back_to_main(chat_id: int, message_id: int):
     """Go back to main help menu."""
+    await delete_telegram_message(chat_id, message_id)
     text = format_help_message()
-    await edit_telegram_message(chat_id, message_id, text)
+    await send_telegram_message(chat_id, text)
 
 
 async def _cb_back_to_upgrade(chat_id: int, user_id: int, message_id: int):
     """Go back to upgrade menu with inline buttons."""
+    await delete_telegram_message(chat_id, message_id)
+
     text = format_upgrade_menu()
 
     reply_markup = {
@@ -855,9 +861,7 @@ async def _cb_back_to_upgrade(chat_id: int, user_id: int, message_id: int):
         ]
     }
 
-    await edit_telegram_message(
-        chat_id, message_id, text, reply_markup=reply_markup,
-    )
+    await send_telegram_message(chat_id, text, reply_markup=reply_markup)
 
 
 async def _handle_history_command(chat_id: int, user_id: int, args: list):
