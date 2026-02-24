@@ -35,6 +35,7 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 # ── Trakteer Config (QRIS Payment) ────────
 TRAKTEER_API_KEY = os.getenv("TRAKTEER_API_KEY")
 TRAKTEER_WEBHOOK_SECRET = os.getenv("TRAKTEER_WEBHOOK_SECRET")
+TRAKTEER_PAGE_URL = os.getenv("TRAKTEER_PAGE_URL", "https://trakteer.id/twenti_studio")
 
 # ── Plan Configuration ─────────────────────
 PLAN_CONFIG = {
@@ -59,6 +60,7 @@ PLAN_CONFIG = {
     "pro": {
         "name": "Pro – Rp19.000/bulan",
         "price": 19000,
+        "duration_days": 30,
         "ai_credits_total": 0,        # not used, weekly refill instead
         "ai_credits_weekly": 50,       # 50 credits/week
         "features": [
@@ -79,6 +81,7 @@ PLAN_CONFIG = {
     "elite": {
         "name": "Elite – Rp49.000/bulan",
         "price": 49000,
+        "duration_days": 30,
         "ai_credits_total": 0,
         "ai_credits_weekly": 150,      # 150 credits/week
         "features": [

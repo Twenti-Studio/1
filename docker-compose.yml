@@ -30,6 +30,7 @@ services:
       - DATABASE_URL=postgresql://${DB_USER:-finot_user}:${DB_PASSWORD:-password_finot}@db:5432/${DB_NAME:-finot_bot_db}
       - TRAKTEER_API_KEY=${TRAKTEER_API_KEY}
       - TRAKTEER_WEBHOOK_SECRET=${TRAKTEER_WEBHOOK_SECRET}
+      - TRAKTEER_PAGE_URL=${TRAKTEER_PAGE_URL}
       - DEPLOYMENT_ENV=docker
     ports:
       - "8000:8000"

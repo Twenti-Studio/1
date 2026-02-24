@@ -12,7 +12,7 @@ import asyncio
 import json
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
-from app.config import BOT_TOKEN, TELEGRAM_API_URL, PLAN_CONFIG
+from app.config import BOT_TOKEN, TELEGRAM_API_URL, PLAN_CONFIG, TRAKTEER_PAGE_URL
 from app.db import prisma
 from app.services.user_service import get_or_create_user
 from app.services.media_service import download_telegram_media
@@ -24,7 +24,7 @@ from app.services.subscription_service import (
     get_subscription_status,
     check_feature_access,
 )
-from app.services.payment_service import create_payment_order
+from app.services.payment_service import create_payment_order, check_payment_status
 
 router = APIRouter(prefix="/webhook", tags=["telegram"])
 
@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
 TELEGRAM_SEND_URL = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendMessage"
 TELEGRAM_SEND_DOC_URL = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendDocument"
 TELEGRAM_SEND_PHOTO_URL = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendPhoto"
+TELEGRAM_EDIT_MSG_URL = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/editMessageText"
+TELEGRAM_ANSWER_CB_URL = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/answerCallbackQuery"
+TELEGRAM_DELETE_MSG_URL = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/deleteMessage"
 
 
 # ═══════════════════════════════════════════
@@ -85,6 +88,69 @@ async def send_telegram_document(
 
     except Exception as e:
         logger.error(f"Failed to send document: {e}")
+        return False
+
+
+async def answer_callback_query(
+    callback_query_id: str,
+    text: str = None,
+    show_alert: bool = False,
+) -> bool:
+    """Answer an inline button callback query."""
+    try:
+        payload = {"callback_query_id": callback_query_id}
+        if text:
+            payload["text"] = text
+        payload["show_alert"] = show_alert
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(TELEGRAM_ANSWER_CB_URL, json=payload)
+            resp.raise_for_status()
+            return True
+
+    except Exception as e:
+        logger.error(f"Failed to answer callback query: {e}")
+        return False
+
+
+async def edit_telegram_message(
+    chat_id: int,
+    message_id: int,
+    text: str,
+    parse_mode: str = "HTML",
+    reply_markup: dict = None,
+) -> bool:
+    """Edit an existing Telegram message."""
+    try:
+        payload = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text,
+            "parse_mode": parse_mode,
+        }
+        if reply_markup:
+            payload["reply_markup"] = json.dumps(reply_markup)
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(TELEGRAM_EDIT_MSG_URL, json=payload)
+            resp.raise_for_status()
+            return True
+
+    except Exception as e:
+        logger.error(f"Failed to edit message: {e}")
+        return False
+
+
+async def delete_telegram_message(chat_id: int, message_id: int) -> bool:
+    """Delete a Telegram message."""
+    try:
+        payload = {"chat_id": chat_id, "message_id": message_id}
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(TELEGRAM_DELETE_MSG_URL, json=payload)
+            resp.raise_for_status()
+            return True
+    except Exception as e:
+        logger.error(f"Failed to delete message: {e}")
         return False
 
 
@@ -160,35 +226,50 @@ def format_subscription_status(status: dict) -> str:
 
 
 def format_upgrade_menu() -> str:
-    """Format upgrade plan menu."""
+    """Format upgrade plan menu with details."""
     lines = [
         "🚀 <b>Upgrade FiNot Premium</b>",
         "━━━━━━━━━━━━━━━━━━━━━━━━",
         "",
-        "🆓 <b>Free Plan</b> (Saat ini)",
-        "• Catat transaksi unlimited",
-        "• Prediksi sederhana",
-        "• Health score dasar",
-        "• 5 AI credit total (tanpa refill)",
-        "",
-        "🥈 <b>Pro – Rp19.000/bulan</b>",
-        "• 50 AI credit / minggu",
-        "• Insight harian 📊",
-        "• Rekomendasi tabungan 💰",
-        "• Scan struk otomatis 📸",
-        "• Weekly summary 📋",
-        "",
-        "🥇 <b>Elite – Rp49.000/bulan</b>",
-        "• 150 AI credit / minggu",
-        "• Monthly deep analysis 📈",
-        "• Forecast 3 bulan 🔮",
-        "• Advanced habit tracking 🧠",
-        "• Priority AI processing ⚡",
-        "",
-        "━━━━━━━━━━━━━━━━━━━━━━━━",
-        "Ketik <b>/buy pro</b> atau <b>/buy elite</b> untuk upgrade!",
-        "Pembayaran via QRIS (Trakteer) 📱",
     ]
+
+    # Free plan
+    lines.append("🆓 <b>FREE PLAN</b> (Saat Ini)")
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+    lines.append("💰 Harga: <b>Gratis</b>")
+    lines.append("🎯 5 AI credit total (tanpa refill)")
+    for feat in PLAN_CONFIG['free']['features']:
+        lines.append(f"  • {feat}")
+    lines.append("")
+
+    # Pro plan
+    lines.append("🥈 <b>PAKET PRO</b>")
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+    pro = PLAN_CONFIG['pro']
+    lines.append(f"💰 Harga: <b>Rp {pro['price']:,}</b>")
+    lines.append(f"⏳ Durasi: <b>{pro['duration_days']} Hari</b>")
+    lines.append(f"🤖 {pro['ai_credits_weekly']} AI credit/minggu")
+    lines.append(f"📊 ~Rp {pro['price']//pro['duration_days']:,}/hari")
+    for feat in pro['features']:
+        lines.append(f"  • {feat}")
+    lines.append("")
+
+    # Elite plan
+    lines.append("🥇 <b>PAKET ELITE</b>")
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+    elite = PLAN_CONFIG['elite']
+    lines.append(f"💰 Harga: <b>Rp {elite['price']:,}</b>")
+    lines.append(f"⏳ Durasi: <b>{elite['duration_days']} Hari</b>")
+    lines.append(f"🤖 {elite['ai_credits_weekly']} AI credit/minggu")
+    lines.append(f"📊 ~Rp {elite['price']//elite['duration_days']:,}/hari")
+    for feat in elite['features']:
+        lines.append(f"  • {feat}")
+    lines.append("")
+
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+    lines.append("🔒 Pembayaran aman via QRIS (Trakteer)")
+    lines.append("⚡ Aktivasi otomatis setelah konfirmasi")
+
     return "\n".join(lines)
 
 
@@ -298,6 +379,25 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
     except Exception:
         return JSONResponse({"ok": True})
 
+    # ── Handle callback queries (inline button presses) ──
+    callback_query = body.get("callback_query")
+    if callback_query:
+        cb_id = callback_query["id"]
+        cb_data = callback_query.get("data", "")
+        cb_message = callback_query.get("message", {})
+        chat_id = cb_message.get("chat", {}).get("id")
+        message_id = cb_message.get("message_id")
+        user_id = callback_query["from"]["id"]
+
+        if chat_id and cb_data:
+            background_tasks.add_task(
+                _handle_callback_query,
+                cb_id, chat_id, user_id, message_id, cb_data,
+            )
+
+        return JSONResponse({"ok": True})
+
+    # ── Handle regular messages ──
     message = body.get("message")
     if not message:
         return JSONResponse({"ok": True})
@@ -391,11 +491,8 @@ async def _handle_command(chat_id: int, user_id: int, text: str):
         status = await get_subscription_status(user_id)
         await send_telegram_message(chat_id, format_subscription_status(status))
 
-    elif command == "/upgrade":
-        await send_telegram_message(chat_id, format_upgrade_menu())
-
-    elif command == "/buy":
-        await _handle_buy_command(chat_id, user_id, args)
+    elif command in ("/upgrade", "/buy"):
+        await _handle_upgrade_command(chat_id, user_id)
 
     elif command == "/history":
         await _handle_history_command(chat_id, user_id, args)
@@ -428,44 +525,275 @@ async def _handle_command(chat_id: int, user_id: int, text: str):
         )
 
 
-async def _handle_buy_command(chat_id: int, user_id: int, args: list):
-    """Handle /buy pro or /buy elite."""
-    if not args or args[0].lower() not in ("pro", "elite"):
+async def _handle_upgrade_command(chat_id: int, user_id: int):
+    """Handle /upgrade or /buy — show plan list with inline buttons."""
+    text = format_upgrade_menu()
+
+    # Inline keyboard with plan buttons
+    reply_markup = {
+        "inline_keyboard": [
+            [{"text": "💎 Beli PAKET PRO - Rp19.000", "callback_data": "buy:pro"}],
+            [{"text": "💎 Beli PAKET ELITE - Rp49.000", "callback_data": "buy:elite"}],
+            [{"text": "🔙 Menu Utama", "callback_data": "menu:main"}],
+        ]
+    }
+
+    await send_telegram_message(chat_id, text, reply_markup=reply_markup)
+
+
+# ═══════════════════════════════════════════
+# CALLBACK QUERY HANDLER (Inline Button Clicks)
+# ═══════════════════════════════════════════
+
+async def _handle_callback_query(
+    cb_id: str, chat_id: int, user_id: int, message_id: int, cb_data: str,
+):
+    """Handle inline button callback queries."""
+    try:
+        # Answer callback to remove loading state
+        await answer_callback_query(cb_id)
+
+        # Parse callback data (format: "action:value")
+        parts = cb_data.split(":", 1)
+        action = parts[0]
+        value = parts[1] if len(parts) > 1 else ""
+
+        if action == "buy":
+            # Step 2: Show order summary / confirmation
+            await _cb_show_order_summary(chat_id, user_id, message_id, value)
+
+        elif action == "confirm_buy":
+            # Step 3: Create payment + show Trakteer link
+            await _cb_confirm_payment(chat_id, user_id, message_id, value)
+
+        elif action == "cancel_buy":
+            # Cancel order
+            await _cb_cancel_order(chat_id, user_id, message_id)
+
+        elif action == "check_status":
+            # Check payment status
+            await _cb_check_payment_status(chat_id, user_id, message_id, value)
+
+        elif action == "menu":
+            if value == "main":
+                await _cb_back_to_main(chat_id, message_id)
+            elif value == "upgrade":
+                await _cb_back_to_upgrade(chat_id, user_id, message_id)
+
+        else:
+            logger.warning(f"Unknown callback data: {cb_data}")
+
+    except Exception as e:
+        logger.error(f"Error handling callback query: {e}", exc_info=True)
         await send_telegram_message(
-            chat_id,
-            "Cara pakai: /buy pro atau /buy elite\n"
-            "Ketik /upgrade untuk lihat detail paket."
+            chat_id, "❌ Terjadi kesalahan. Silakan coba lagi."
         )
+
+
+async def _cb_show_order_summary(
+    chat_id: int, user_id: int, message_id: int, plan: str,
+):
+    """Step 2: Show order summary with confirmation buttons."""
+    if plan not in ("pro", "elite"):
         return
 
-    plan = args[0].lower()
+    plan_config = PLAN_CONFIG[plan]
+    price = plan_config["price"]
+    duration = plan_config["duration_days"]
+
+    from datetime import datetime
+
+    now = datetime.utcnow()
+
+    text = (
+        f"✅ <b>Konfirmasi Pesanan</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📦 Paket: <b>{plan_config['name']}</b>\n"
+        f"💰 Harga: <b>Rp {price:,}</b>\n"
+        f"⏳ Durasi: <b>{duration} Hari</b>\n"
+        f"🤖 Kuota: <b>{plan_config['ai_credits_weekly']} AI credit/minggu</b>\n"
+        f"📊 Per Hari: ~Rp {price // duration:,}\n\n"
+    )
+
+    # Add features
+    for feat in plan_config["features"]:
+        text += f"  • {feat}\n"
+
+    text += (
+        f"\n━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"<i>Lanjutkan pembayaran?</i>"
+    )
+
+    reply_markup = {
+        "inline_keyboard": [
+            [{"text": "💳 Bayar Sekarang", "callback_data": f"confirm_buy:{plan}"}],
+            [{"text": "🔙 Kembali", "callback_data": "menu:upgrade"}],
+        ]
+    }
+
+    await edit_telegram_message(
+        chat_id, message_id, text, reply_markup=reply_markup,
+    )
+
+
+async def _cb_confirm_payment(
+    chat_id: int, user_id: int, message_id: int, plan: str,
+):
+    """Step 3: Create payment record and show Trakteer payment link."""
+    if plan not in ("pro", "elite"):
+        return
+
     plan_config = PLAN_CONFIG[plan]
 
     try:
         payment = await create_payment_order(user_id, plan)
+        tx_id = payment["transaction_id"]
+        payment_id = payment["payment_id"]
 
-        message = (
-            f"💳 <b>Pembayaran {plan_config['name']}</b>\n"
+        from datetime import datetime
+
+        now = datetime.utcnow()
+
+        text = (
+            f"💳 <b>PEMBAYARAN QRIS</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📦 Paket: <b>{plan_config['name']}</b>\n"
             f"💰 Total: <b>Rp {plan_config['price']:,}</b>\n"
-            f"📋 ID Transaksi: <code>{payment['transaction_id']}</code>\n\n"
-            f"📱 <b>Cara Bayar:</b>\n"
-            f"1. Buka link Trakteer di bawah\n"
-            f"2. Pilih nominal sesuai paket\n"
-            f"3. Scan QRIS yang muncul\n"
-            f"4. Pembayaran otomatis terverifikasi! ✅\n\n"
-            f"⏳ Batas waktu: 30 menit\n\n"
-            f"Setelah bayar, ketik /status untuk cek."
+            f"⏳ Durasi: <b>{plan_config['duration_days']} hari</b>\n"
+            f"🆔 ID Transaksi: <code>{tx_id}</code>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🏧 <b>CARA PEMBAYARAN:</b>\n\n"
+            f"1️⃣ Klik tombol <b>\"Bayar via Trakteer\"</b> di bawah\n"
+            f"2️⃣ Pilih metode QRIS di halaman Trakteer\n"
+            f"3️⃣ Scan QR Code dengan E-Wallet (DANA/OVO/GoPay/ShopeePay) atau Mobile Banking\n"
+            f"4️⃣ Selesaikan pembayaran\n"
+            f"5️⃣ Premium akan <b>otomatis aktif</b> setelah pembayaran berhasil! ✨\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"⚠️ <b>PENTING:</b>\n"
+            f"• Pastikan nominal sesuai paket\n"
+            f"• QR Code valid selama <b>30 menit</b>\n"
+            f"• Anda akan mendapat notifikasi otomatis setelah sukses membayar\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🕐 Dibuat: {now.strftime('%d/%m/%Y %H:%M:%S')}"
         )
 
-        await send_telegram_message(chat_id, message)
+        # Trakteer link with plan info in support message
+        trakteer_link = f"{TRAKTEER_PAGE_URL}?message=FiNot-{plan.upper()}-{tx_id}"
+
+        reply_markup = {
+            "inline_keyboard": [
+                [{"text": "💳 Bayar via Trakteer", "url": trakteer_link}],
+                [{"text": "🔍 Cek Status", "callback_data": f"check_status:{payment_id}"}],
+                [{"text": "❌ Batalkan", "callback_data": "cancel_buy:0"}],
+            ]
+        }
+
+        await edit_telegram_message(
+            chat_id, message_id, text, reply_markup=reply_markup,
+        )
 
     except Exception as e:
         logger.error(f"Error creating payment: {e}", exc_info=True)
-        await send_telegram_message(
-            chat_id,
-            "❌ Gagal membuat pesanan. Silakan coba lagi."
+        await edit_telegram_message(
+            chat_id, message_id,
+            "❌ Gagal membuat pesanan. Silakan coba lagi.\n"
+            "Ketik /upgrade untuk mencoba kembali.",
         )
+
+
+async def _cb_cancel_order(chat_id: int, user_id: int, message_id: int):
+    """Cancel payment order."""
+    text = (
+        "❌ <b>Pesanan Dibatalkan</b>\n\n"
+        "Pembayaran telah dibatalkan.\n"
+        "Ketik /upgrade kapan saja untuk melihat paket lagi! 😊"
+    )
+    await edit_telegram_message(chat_id, message_id, text)
+
+
+async def _cb_check_payment_status(
+    chat_id: int, user_id: int, message_id: int, payment_id_str: str,
+):
+    """Check payment status and notify user."""
+    try:
+        payment_id = int(payment_id_str)
+        result = await check_payment_status(payment_id)
+
+        if not result.get("found"):
+            await send_telegram_message(
+                chat_id, "❓ Payment tidak ditemukan."
+            )
+            return
+
+        status = result["status"]
+
+        if status == "paid":
+            text = (
+                "✅ <b>Pembayaran Berhasil!</b>\n\n"
+                f"🎉 Paket <b>{result.get('plan', '').upper()}</b> sudah aktif!\n"
+                "Ketik /status untuk melihat detail langganan."
+            )
+            await send_telegram_message(chat_id, text)
+
+        elif status == "expired":
+            text = (
+                "⏰ <b>Pembayaran Kedaluwarsa</b>\n\n"
+                "Pesanan telah melewati batas waktu 30 menit.\n"
+                "Ketik /upgrade untuk membuat pesanan baru."
+            )
+            await send_telegram_message(chat_id, text)
+
+        elif status == "pending":
+            text = (
+                "⏳ <b>Menunggu Pembayaran</b>\n\n"
+                f"💰 Total: <b>Rp {result.get('amount', 0):,}</b>\n"
+                f"📦 Paket: <b>{result.get('plan', '').upper()}</b>\n\n"
+                "Silakan selesaikan pembayaran via Trakteer.\n"
+                "Klik tombol \"Bayar via Trakteer\" di pesan sebelumnya."
+            )
+
+            reply_markup = {
+                "inline_keyboard": [
+                    [{"text": "🔄 Cek Lagi", "callback_data": f"check_status:{payment_id}"}],
+                ]
+            }
+            await send_telegram_message(chat_id, text, reply_markup=reply_markup)
+
+        else:
+            await send_telegram_message(
+                chat_id,
+                f"📋 Status pembayaran: <b>{status}</b>\n"
+                "Ketik /upgrade untuk membuat pesanan baru.",
+            )
+
+    except Exception as e:
+        logger.error(f"Error checking payment status: {e}", exc_info=True)
+        await send_telegram_message(
+            chat_id, "❌ Gagal mengecek status. Coba lagi nanti."
+        )
+
+
+async def _cb_back_to_main(chat_id: int, message_id: int):
+    """Go back to main help menu."""
+    text = format_help_message()
+    await edit_telegram_message(chat_id, message_id, text)
+
+
+async def _cb_back_to_upgrade(chat_id: int, user_id: int, message_id: int):
+    """Go back to upgrade menu with inline buttons."""
+    text = format_upgrade_menu()
+
+    reply_markup = {
+        "inline_keyboard": [
+            [{"text": "💎 Beli PAKET PRO - Rp19.000", "callback_data": "buy:pro"}],
+            [{"text": "💎 Beli PAKET ELITE - Rp49.000", "callback_data": "buy:elite"}],
+            [{"text": "🔙 Menu Utama", "callback_data": "menu:main"}],
+        ]
+    }
+
+    await edit_telegram_message(
+        chat_id, message_id, text, reply_markup=reply_markup,
+    )
 
 
 async def _handle_history_command(chat_id: int, user_id: int, args: list):

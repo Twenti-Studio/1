@@ -4,6 +4,7 @@ __pycache__/
 node_modules/
 uploads/
 exports/
+backups/
 *.egg-info/
 dist/
 build/
