@@ -957,21 +957,7 @@ async def _handle_insight_command(chat_id: int, user_id: int):
 
 
 async def _handle_predict_command(chat_id: int, user_id: int, args: list):
-    """Handle /predict [saldo] - Balance Prediction."""
-    if not args:
-        await send_telegram_message(
-            chat_id,
-            "Cara pakai: /predict [saldo saat ini]\n"
-            "Contoh: /predict 500000"
-        )
-        return
-
-    try:
-        balance = int(args[0].replace(".", "").replace(",", "").replace("rb", "000").replace("jt", "000000"))
-    except ValueError:
-        await send_telegram_message(chat_id, "⚠️ Format saldo tidak valid. Contoh: /predict 500000")
-        return
-
+    """Handle /predict - Balance Prediction (auto-calculates balance)."""
     access = await check_credits_and_consume(user_id)
     if not access["allowed"]:
         await send_telegram_message(chat_id, access["message"])
@@ -980,12 +966,13 @@ async def _handle_predict_command(chat_id: int, user_id: int, args: list):
     try:
         from worker.analysis_service import get_balance_prediction
 
-        await send_telegram_message(chat_id, "🔮 Memprediksi umur saldo...")
+        await send_telegram_message(chat_id, "🔮 Menghitung saldo dan memprediksi...")
 
-        result = await get_balance_prediction(user_id, balance)
+        result = await get_balance_prediction(user_id)
 
         if result.get("success"):
             data = result["data"]
+            balance = result.get("balance", 0)
             days = data.get("predicted_days", 0)
             explanation = data.get("explanation", "")
 
@@ -994,7 +981,7 @@ async def _handle_predict_command(chat_id: int, user_id: int, args: list):
                 f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"💰 Saldo saat ini: <b>Rp {balance:,}</b>\n"
                 f"📊 Rata-rata pengeluaran/hari: <b>Rp {data.get('daily_avg_expense', 0):,}</b>\n"
-                f"📅 Estimasi bertahan: <b>{days} hari</b>\n\n"
+                f"📅 Estimasi bertahan: <b>±{days} hari</b>\n\n"
                 f"📝 {explanation}"
             )
         else:
@@ -1100,11 +1087,9 @@ async def _handle_health_command(chat_id: int, user_id: int):
 
 
 async def _handle_simulate_command(chat_id: int, user_id: int, args: list):
-    """Handle /simulate [nominal] - Saving Simulation."""
-    try:
-        daily_cut = int(args[0].replace(".", "").replace(",", "").replace("rb", "000")) if args else 10000
-    except ValueError:
-        daily_cut = 10000
+    """Handle /simulate or natural language simulation."""
+    # Join args as natural language scenario
+    scenario = " ".join(args) if args else "hemat 10000 per hari"
 
     access = await check_credits_and_consume(user_id)
     if not access["allowed"]:
@@ -1114,20 +1099,19 @@ async def _handle_simulate_command(chat_id: int, user_id: int, args: list):
     try:
         from worker.analysis_service import get_saving_simulation
 
-        await send_telegram_message(chat_id, f"📊 Mensimulasikan penghematan Rp {daily_cut:,}/hari...")
+        await send_telegram_message(chat_id, f"📊 Mensimulasikan: {scenario}...")
 
-        result = await get_saving_simulation(user_id, daily_cut=daily_cut)
+        result = await get_saving_simulation(user_id, user_scenario=scenario)
 
         if result.get("success"):
             data = result["data"]
             message = (
                 f"📊 <b>Simulasi Hemat</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"✂️ Kurangi: <b>Rp {daily_cut:,}/hari</b>\n\n"
-                f"📅 Saldo bertahan: {data.get('original_days', 0)} → <b>{data.get('simulated_days', 0)} hari</b>\n"
-                f"⏱️ Extra: <b>+{data.get('extra_days', 0)} hari</b>\n\n"
+                f"🎯 Skenario: <b>{data.get('scenario', scenario)}</b>\n\n"
                 f"💰 Hemat per bulan: <b>Rp {data.get('monthly_saving', 0):,}</b>\n"
-                f"💎 Hemat per tahun: <b>Rp {data.get('yearly_saving', 0):,}</b>\n\n"
+                f"💎 Hemat per tahun: <b>Rp {data.get('yearly_saving', 0):,}</b>\n"
+                f"⏱️ Umur saldo bertambah: <b>+{data.get('extra_balance_days', 0)} hari</b>\n\n"
                 f"✨ {data.get('message', '')}"
             )
         else:
@@ -1248,10 +1232,7 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
             await _handle_insight_command(chat_id, user_id)
 
         elif intent == UserIntent.PREDICTION:
-            await send_telegram_message(
-                chat_id,
-                "🔮 Untuk prediksi saldo, gunakan:\n/predict [saldo saat ini]\n\nContoh: /predict 500000"
-            )
+            await _handle_predict_command(chat_id, user_id, [])
 
         elif intent == UserIntent.SAVING_REC:
             await _handle_saving_command(chat_id, user_id)
@@ -1260,10 +1241,8 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
             await _handle_health_command(chat_id, user_id)
 
         elif intent == UserIntent.SIMULATION:
-            await send_telegram_message(
-                chat_id,
-                "📊 Untuk simulasi hemat, gunakan:\n/simulate [nominal per hari]\n\nContoh: /simulate 10000"
-            )
+            # Pass the user's original text as the simulation scenario
+            await _handle_simulate_command(chat_id, user_id, [text])
 
         elif intent == UserIntent.ANALYSIS:
             period = classification.get("period", "week")

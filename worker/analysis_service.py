@@ -114,15 +114,37 @@ async def get_daily_insight(user_id: int) -> Dict:
         return {"success": False, "error": str(e)}
 
 
-async def get_balance_prediction(user_id: int, current_balance: int) -> Dict:
-    """Predict how long balance will last."""
+async def get_balance_prediction(user_id: int, current_balance: int = None) -> Dict:
+    """Predict how long balance will last. Auto-calculates balance if not provided."""
     try:
         summary = await _get_transaction_summary(user_id, days=30)
+
+        # Auto-calculate balance from all transactions if not provided
+        if current_balance is None or current_balance == 0:
+            all_txs = await prisma.transaction.find_many(
+                where={"userId": user_id},
+            )
+            total_income = sum(tx.amount for tx in all_txs if tx.intent == "income")
+            total_expense = sum(tx.amount for tx in all_txs if tx.intent == "expense")
+            current_balance = total_income - total_expense
+
+        if current_balance <= 0:
+            return {
+                "success": True,
+                "data": {
+                    "daily_avg_expense": 0,
+                    "daily_avg_income": 0,
+                    "predicted_days": 0,
+                    "prediction_confidence": 0.5,
+                    "explanation": "Saldo kamu saat ini minus atau nol. Catat pemasukan terlebih dahulu agar prediksi bisa akurat.",
+                },
+            }
+
         prompt = build_balance_prediction_prompt(summary, current_balance)
         result = await _call_analysis_llm(prompt)
 
-        logger.info(f"Balance prediction generated for user {user_id}")
-        return {"success": True, "data": result}
+        logger.info(f"Balance prediction generated for user {user_id} (balance={current_balance})")
+        return {"success": True, "data": result, "balance": current_balance}
 
     except Exception as e:
         logger.error(f"Error predicting balance: {e}", exc_info=True)
@@ -161,14 +183,13 @@ async def get_financial_health_score(user_id: int) -> Dict:
 
 async def get_saving_simulation(
     user_id: int,
-    daily_cut: int = 10000,
-    current_balance: int = 0,
+    user_scenario: str = "hemat 10000 per hari",
 ) -> Dict:
-    """Simulate saving impact."""
+    """Simulate saving impact from natural language scenario."""
     try:
-        # Get average daily expense
         summary = await _get_transaction_summary(user_id, days=30)
 
+        # Get average daily expense
         txs = await prisma.transaction.find_many(
             where={
                 "userId": user_id,
@@ -176,11 +197,20 @@ async def get_saving_simulation(
                 "createdAt": {"gte": datetime.utcnow() - timedelta(days=30)},
             },
         )
-
         total_expense = sum(tx.amount for tx in txs)
-        daily_avg = total_expense / 30 if txs else 0
+        daily_avg = total_expense // 30 if txs else 0
 
-        prompt = build_saving_simulation_prompt(daily_cut, current_balance, int(daily_avg))
+        # Auto-calculate current balance
+        all_txs = await prisma.transaction.find_many(
+            where={"userId": user_id},
+        )
+        total_income = sum(tx.amount for tx in all_txs if tx.intent == "income")
+        total_all_expense = sum(tx.amount for tx in all_txs if tx.intent == "expense")
+        current_balance = max(total_income - total_all_expense, 0)
+
+        prompt = build_saving_simulation_prompt(
+            user_scenario, current_balance, daily_avg, summary
+        )
         result = await _call_analysis_llm(prompt)
 
         logger.info(f"Saving simulation generated for user {user_id}")
