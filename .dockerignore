@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.git/
+.github/
+node_modules/
+uploads/
+exports/
+*.egg-info/
+dist/
+build/
+README.md

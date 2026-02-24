@@ -1,0 +1,177 @@
+generator client {
+  provider             = "prisma-client-py"
+  recursive_type_depth = 5
+  interface            = "asyncio"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════
+// USER & SUBSCRIPTION MODELS
+// ═══════════════════════════════════════════
+
+model User {
+  id          BigInt   @id
+  username    String?
+  displayName String   @map("display_name")
+  plan        String   @default("free") // free | pro | elite
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  receipts      Receipt[]
+  llmResponses  LlmResponse[]
+  transactions  Transaction[]
+  subscriptions Subscription[]
+  aiCredits     AiCredit[]
+  payments      Payment[]
+
+  @@map("users")
+}
+
+model Subscription {
+  id        Int      @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  plan      String   // pro | elite
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+  isActive  Boolean  @default(true) @map("is_active")
+  paymentId Int?     @map("payment_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("subscriptions")
+}
+
+model AiCredit {
+  id           Int      @id @default(autoincrement())
+  userId       BigInt   @map("user_id")
+  totalCredits Int      @default(0) @map("total_credits")
+  usedCredits  Int      @default(0) @map("used_credits")
+  weekStartAt  DateTime @map("week_start_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("ai_credits")
+}
+
+// ═══════════════════════════════════════════
+// PAYMENT MODELS (Trakteer QRIS)
+// ═══════════════════════════════════════════
+
+model Payment {
+  id              Int      @id @default(autoincrement())
+  userId          BigInt   @map("user_id")
+  trakteerId      String?  @unique @map("trakteer_id")
+  plan            String   // pro | elite
+  amount          Int      // in Rupiah
+  status          String   @default("pending") // pending | paid | expired | cancelled
+  qrisUrl         String?  @map("qris_url")
+  expiresAt       DateTime? @map("expires_at")
+  paidAt          DateTime? @map("paid_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ═══════════════════════════════════════════
+// RECEIPT & OCR MODELS
+// ═══════════════════════════════════════════
+
+model Receipt {
+  id         Int       @id @default(autoincrement())
+  userId     BigInt    @map("user_id")
+  filePath   String    @map("file_path")
+  fileName   String    @map("file_name")
+  mimeType   String    @map("mime_type")
+  fileSize   Int       @default(0) @map("file_size")
+  uploadedAt DateTime  @default(now()) @map("uploaded_at")
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ocrTexts    OcrText[]
+  transaction Transaction[]
+
+  @@index([userId])
+  @@map("receipts")
+}
+
+model OcrText {
+  id        Int      @id @default(autoincrement())
+  receiptId Int      @map("receipt_id")
+  ocrRaw    String   @map("ocr_raw") @db.Text
+  ocrMeta   Json?    @map("ocr_meta")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  receipt Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@index([receiptId])
+  @@map("ocr_texts")
+}
+
+// ═══════════════════════════════════════════
+// LLM RESPONSE MODEL
+// ═══════════════════════════════════════════
+
+model LlmResponse {
+  id          Int      @id @default(autoincrement())
+  userId      BigInt?  @map("user_id")
+  inputSource String   @map("input_source")
+  inputText   String?  @map("input_text") @db.Text
+  promptUsed  String?  @map("prompt_used") @db.Text
+  modelName   String?  @map("model_name") @default("gpt-4o-mini")
+  llmOutput   Json     @map("llm_output")
+  llmMeta     Json?    @map("llm_meta")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("llm_responses")
+}
+
+// ═══════════════════════════════════════════
+// TRANSACTION MODEL
+// ═══════════════════════════════════════════
+
+model Transaction {
+  id            BigInt    @id @default(autoincrement())
+  userId        BigInt?   @map("user_id")
+  llmResponseId Int?      @map("llm_response_id")
+  receiptId     Int?      @map("receipt_id")
+
+  intent    String
+  amount    Int
+  currency  String    @default("IDR")
+  txDate    DateTime? @map("tx_date")
+  category  String
+  note      String?   @db.Text
+
+  needsReview Boolean  @default(false) @map("needs_review")
+  extra       Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  llmResponse LlmResponse? @relation(fields: [llmResponseId], references: [id], onDelete: SetNull)
+  receipt     Receipt?     @relation(fields: [receiptId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([needsReview])
+  @@index([intent])
+  @@map("transactions")
+}

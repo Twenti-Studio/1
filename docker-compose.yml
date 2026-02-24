@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: finot-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-finot_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password_finot}
+      POSTGRES_DB: ${DB_NAME:-finot_bot_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-finot_user} -d ${DB_NAME:-finot_bot_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build: .
+    container_name: finot-bot
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATABASE_URL=postgresql://${DB_USER:-finot_user}:${DB_PASSWORD:-password_finot}@db:5432/${DB_NAME:-finot_bot_db}
+      - TRAKTEER_API_KEY=${TRAKTEER_API_KEY}
+      - TRAKTEER_WEBHOOK_SECRET=${TRAKTEER_WEBHOOK_SECRET}
+      - DEPLOYMENT_ENV=docker
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./exports:/app/exports
+
+volumes:
+  postgres_data:
+    driver: local

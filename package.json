@@ -1,0 +1,23 @@
+{
+    "name": "finot-prisma",
+    "version": "1.0.0",
+    "description": "Prisma ORM untuk FiNot - AI Financial Bot",
+    "scripts": {
+        "prisma:generate": "prisma generate",
+        "prisma:migrate": "prisma migrate deploy",
+        "prisma:studio": "prisma studio",
+        "prisma:push": "prisma db push"
+    },
+    "keywords": [
+        "prisma",
+        "bot",
+        "finance",
+        "finot"
+    ],
+    "dependencies": {
+        "prisma": "5.4.2"
+    },
+    "devDependencies": {
+        "@prisma/client": "5.4.2"
+    }
+}
