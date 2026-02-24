@@ -706,8 +706,10 @@ async def _cb_confirm_payment(
 
         now = datetime.utcnow()
 
-        # Generate Trakteer payment link
-        trakteer_link = f"{TRAKTEER_PAGE_URL}?message=FiNot-{plan.upper()}-{tx_id}"
+        # Generate Trakteer payment link with correct quantity
+        # Unit price di Trakteer = Rp 1.000, jadi quantity = price / 1000
+        trakteer_qty = plan_config["price"] // 1000
+        trakteer_link = f"{TRAKTEER_PAGE_URL}?quantity={trakteer_qty}&message=FiNot-{plan.upper()}-{tx_id}"
 
         # Generate QR code from payment link
         qr_bytes = generate_payment_qr(trakteer_link)
