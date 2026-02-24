@@ -105,7 +105,33 @@ if [ -d "$BACKUP_DIR" ]; then
     fi
 fi
 
-# ── Step 4: Rebuild bot container only ────────────
+# ── Step 4: Check .env file ───────────────────────
+if [ ! -f ".env" ]; then
+    log_error "File .env tidak ditemukan!"
+    echo ""
+    log_info "Buat file .env di server terlebih dahulu:"
+    echo "   nano .env"
+    echo ""
+    log_info "Isi minimal yang dibutuhkan:"
+    echo "   BOT_TOKEN=your_bot_token"
+    echo "   OPENAI_API_KEY=your_openai_key"
+    echo "   DB_USER=finot_user"
+    echo "   DB_PASSWORD=password_finot"
+    echo "   DB_NAME=finot_bot_db"
+    echo "   DATABASE_URL=postgresql://finot_user:password_finot@db:5432/finot_bot_db"
+    echo "   TRAKTEER_WEBHOOK_SECRET=your_webhook_secret"
+    echo "   TRAKTEER_PAGE_URL=https://trakteer.id/your-username/tip"
+    echo "   DEPLOYMENT_ENV=docker"
+    echo ""
+    log_info "Atau copy dari lokal:"
+    echo "   scp .env root@your-server-ip:~/1/.env"
+    echo ""
+    exit 1
+fi
+
+log_ok ".env file found"
+
+# ── Step 5: Rebuild bot container only ────────────
 log_info "🔨 Rebuilding bot container (database tetap aman)..."
 echo ""
 
