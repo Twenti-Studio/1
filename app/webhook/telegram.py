@@ -6,10 +6,12 @@ Integrates LLM intent classification, RBAC, and AI analysis features.
 """
 
 import os
+import io
 import httpx
 import logging
 import asyncio
 import json
+import qrcode
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
 from app.config import BOT_TOKEN, TELEGRAM_API_URL, PLAN_CONFIG, TRAKTEER_PAGE_URL
@@ -89,6 +91,56 @@ async def send_telegram_document(
     except Exception as e:
         logger.error(f"Failed to send document: {e}")
         return False
+
+
+async def send_telegram_photo_bytes(
+    chat_id: int,
+    photo_bytes: bytes,
+    filename: str = "qr_payment.png",
+    caption: str = "",
+    reply_markup: dict = None,
+) -> bool:
+    """Send a photo from bytes via Telegram API."""
+    try:
+        data = {
+            "chat_id": str(chat_id),
+            "parse_mode": "HTML",
+        }
+        if caption:
+            data["caption"] = caption
+        if reply_markup:
+            data["reply_markup"] = json.dumps(reply_markup)
+
+        files = {"photo": (filename, photo_bytes, "image/png")}
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                TELEGRAM_SEND_PHOTO_URL, data=data, files=files
+            )
+            resp.raise_for_status()
+            return True
+
+    except Exception as e:
+        logger.error(f"Failed to send photo: {e}")
+        return False
+
+
+def generate_payment_qr(url: str) -> bytes:
+    """Generate QR code image bytes from a URL."""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    return buffer.getvalue()
 
 
 async def answer_callback_query(
@@ -639,7 +691,7 @@ async def _cb_show_order_summary(
 async def _cb_confirm_payment(
     chat_id: int, user_id: int, message_id: int, plan: str,
 ):
-    """Step 3: Create payment record and show Trakteer payment link."""
+    """Step 3: Create payment record, generate QR code, and send as photo."""
     if plan not in ("pro", "elite"):
         return
 
@@ -654,48 +706,54 @@ async def _cb_confirm_payment(
 
         now = datetime.utcnow()
 
-        text = (
-            f"💳 <b>PEMBAYARAN QRIS</b>\n"
+        # Generate Trakteer payment link
+        trakteer_link = f"{TRAKTEER_PAGE_URL}?message=FiNot-{plan.upper()}-{tx_id}"
+
+        # Generate QR code from payment link
+        qr_bytes = generate_payment_qr(trakteer_link)
+
+        # Delete the old inline message (order summary)
+        await delete_telegram_message(chat_id, message_id)
+
+        # Caption for the QR photo
+        caption = (
+            f"💳 <b>PEMBAYARAN — {plan_config['name']}</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"📦 Paket: <b>{plan_config['name']}</b>\n"
             f"💰 Total: <b>Rp {plan_config['price']:,}</b>\n"
             f"⏳ Durasi: <b>{plan_config['duration_days']} hari</b>\n"
-            f"🆔 ID Transaksi: <code>{tx_id}</code>\n\n"
+            f"🆔 ID: <code>{tx_id}</code>\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🏧 <b>CARA PEMBAYARAN:</b>\n\n"
-            f"1️⃣ Klik tombol <b>\"Bayar via Trakteer\"</b> di bawah\n"
-            f"2️⃣ Pilih metode QRIS di halaman Trakteer\n"
-            f"3️⃣ Scan QR Code dengan E-Wallet (DANA/OVO/GoPay/ShopeePay) atau Mobile Banking\n"
-            f"4️⃣ Selesaikan pembayaran\n"
-            f"5️⃣ Premium akan <b>otomatis aktif</b> setelah pembayaran berhasil! ✨\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"⚠️ <b>PENTING:</b>\n"
-            f"• Pastikan nominal sesuai paket\n"
-            f"• QR Code valid selama <b>30 menit</b>\n"
-            f"• Anda akan mendapat notifikasi otomatis setelah sukses membayar\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🕐 Dibuat: {now.strftime('%d/%m/%Y %H:%M:%S')}"
+            f"📱 <b>CARA BAYAR:</b>\n"
+            f"1️⃣ Scan QR di atas dengan kamera HP\n"
+            f"2️⃣ Buka halaman Trakteer yang muncul\n"
+            f"3️⃣ Pilih pembayaran QRIS\n"
+            f"4️⃣ Bayar dengan E-Wallet/M-Banking\n\n"
+            f"⚠️ Pastikan nominal <b>Rp {plan_config['price']:,}</b>\n"
+            f"⏰ Berlaku <b>30 menit</b>\n"
+            f"🕐 {now.strftime('%d/%m/%Y %H:%M')}"
         )
-
-        # Trakteer link with plan info in support message
-        trakteer_link = f"{TRAKTEER_PAGE_URL}?message=FiNot-{plan.upper()}-{tx_id}"
 
         reply_markup = {
             "inline_keyboard": [
-                [{"text": "💳 Bayar via Trakteer", "url": trakteer_link}],
+                [{"text": "🔗 Buka Link Pembayaran", "url": trakteer_link}],
                 [{"text": "🔍 Cek Status", "callback_data": f"check_status:{payment_id}"}],
                 [{"text": "❌ Batalkan", "callback_data": "cancel_buy:0"}],
             ]
         }
 
-        await edit_telegram_message(
-            chat_id, message_id, text, reply_markup=reply_markup,
+        # Send QR code as photo with caption and buttons
+        await send_telegram_photo_bytes(
+            chat_id, qr_bytes,
+            filename=f"qr_{tx_id}.png",
+            caption=caption,
+            reply_markup=reply_markup,
         )
 
     except Exception as e:
         logger.error(f"Error creating payment: {e}", exc_info=True)
-        await edit_telegram_message(
-            chat_id, message_id,
+        await send_telegram_message(
+            chat_id,
             "❌ Gagal membuat pesanan. Silakan coba lagi.\n"
             "Ketik /upgrade untuk mencoba kembali.",
         )
