@@ -1,7 +1,7 @@
 """Transaction query service untuk history dan export."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Tuple, Optional
 
@@ -16,7 +16,7 @@ EXPORTS_DIR = Path("exports")
 
 def _get_period_range(period: str) -> Tuple[datetime, datetime, str]:
     """Hitung rentang waktu untuk periode tertentu."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if period == "today":
         start = datetime(now.year, now.month, now.day)
         label = "harian (hari ini)"
@@ -114,7 +114,7 @@ async def create_excel_report(
     df = pd.DataFrame(rows)
 
     EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     file_name = f"finot_{user_id}_{period}_{timestamp}.xlsx"
     file_path = EXPORTS_DIR / file_name
 

@@ -8,7 +8,7 @@ Financial Health Score, Saving Simulation, Weekly/Monthly Deep Analysis.
 import logging
 import json
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 from app.db.connection import prisma
@@ -30,7 +30,7 @@ async def _get_transaction_summary(
     user_id: int, days: int = 7
 ) -> str:
     """Build transaction summary text for AI analysis."""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     txs = await prisma.transaction.find_many(
         where={
@@ -194,7 +194,7 @@ async def get_saving_simulation(
             where={
                 "userId": user_id,
                 "intent": "expense",
-                "createdAt": {"gte": datetime.utcnow() - timedelta(days=30)},
+                "createdAt": {"gte": datetime.now(timezone.utc) - timedelta(days=30)},
             },
         )
         total_expense = sum(tx.amount for tx in txs)

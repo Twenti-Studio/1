@@ -4,7 +4,7 @@ import asyncio
 import logging
 import mimetypes
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -48,7 +48,7 @@ async def download_telegram_media(
 ) -> dict:
     """Download file dari Telegram."""
     user_id_value = str(user_id or "anon")
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     timestamp = now.strftime("%Y%m%d%H%M%S")
     metadata_url = f"https://api.telegram.org/bot{bot_token}/getFile"
     params = {"file_id": file_id}
@@ -135,7 +135,7 @@ async def cleanup_old_files(days: int = 30) -> dict:
     """Hapus file yang lebih tua dari X hari."""
     _logger.info(f"Starting cleanup for files older than {days} days")
 
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
     cutoff_timestamp = cutoff_date.timestamp()
 
     deleted_count = 0

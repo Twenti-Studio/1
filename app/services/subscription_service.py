@@ -6,13 +6,18 @@ Handles plan verification, AI credit management, and feature gating.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 from app.db.connection import prisma
 from app.config import PLAN_CONFIG
 
 _logger = logging.getLogger(__name__)
+
+
+def _utcnow():
+    """Return timezone-aware UTC now."""
+    return datetime.now(timezone.utc)
 
 
 async def get_user_plan(user_id: int) -> str:
@@ -31,7 +36,7 @@ async def get_user_plan(user_id: int) -> str:
                 where={
                     "userId": user_id,
                     "isActive": True,
-                    "endDate": {"gte": datetime.utcnow()},
+                    "endDate": {"gte": _utcnow()},
                 },
                 order={"endDate": "desc"},
             )
@@ -87,7 +92,7 @@ async def check_ai_credits(user_id: int) -> Dict:
                         "userId": user_id,
                         "totalCredits": 5,
                         "usedCredits": 0,
-                        "weekStartAt": datetime.utcnow(),
+                        "weekStartAt": _utcnow(),
                     }
                 )
 
@@ -102,7 +107,7 @@ async def check_ai_credits(user_id: int) -> Dict:
         else:
             # Pro/Elite: weekly credits with refill
             weekly_limit = plan_config["ai_credits_weekly"]
-            now = datetime.utcnow()
+            now = _utcnow()
             week_start = now - timedelta(days=now.weekday())
             week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -163,7 +168,7 @@ async def consume_ai_credit(user_id: int, amount: int = 1) -> bool:
                 order={"createdAt": "desc"},
             )
         else:
-            now = datetime.utcnow()
+            now = _utcnow()
             week_start = now - timedelta(days=now.weekday())
             week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -203,7 +208,7 @@ async def activate_subscription(
     Activate a subscription for a user.
     """
     try:
-        now = datetime.utcnow()
+        now = _utcnow()
         end_date = now + timedelta(days=duration_days)
 
         # Deactivate existing subscriptions
@@ -287,7 +292,7 @@ async def get_subscription_status(user_id: int) -> Dict:
             )
 
             if sub:
-                days_left = (sub.endDate - datetime.utcnow()).days
+                days_left = (sub.endDate - _utcnow()).days
                 result["subscription"] = {
                     "end_date": sub.endDate.isoformat(),
                     "days_left": max(0, days_left),

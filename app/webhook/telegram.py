@@ -657,9 +657,9 @@ async def _cb_show_order_summary(
     price = plan_config["price"]
     duration = plan_config["duration_days"]
 
-    from datetime import datetime
+    from datetime import datetime, timezone
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     text = (
         f"✅ <b>Konfirmasi Pesanan</b>\n"
@@ -706,9 +706,9 @@ async def _cb_confirm_payment(
         tx_id = payment["transaction_id"]
         payment_id = payment["payment_id"]
 
-        from datetime import datetime
+        from datetime import datetime, timezone
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Generate Trakteer payment link with correct quantity
         # Unit price di Trakteer = Rp 1.000, jadi quantity = price / 1000

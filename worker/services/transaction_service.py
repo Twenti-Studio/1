@@ -2,7 +2,7 @@
 
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 from app.db.connection import prisma
@@ -40,16 +40,16 @@ async def save_transaction(
         if date_str:
             try:
                 if date_str.lower() in ("today", "hari ini"):
-                    tx_data["txDate"] = datetime.utcnow()
+                    tx_data["txDate"] = datetime.now(timezone.utc)
                 elif date_str.lower() in ("yesterday", "kemarin"):
                     from datetime import timedelta
-                    tx_data["txDate"] = datetime.utcnow() - timedelta(days=1)
+                    tx_data["txDate"] = datetime.now(timezone.utc) - timedelta(days=1)
                 else:
                     tx_data["txDate"] = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
-                tx_data["txDate"] = datetime.utcnow()
+                tx_data["txDate"] = datetime.now(timezone.utc)
         else:
-            tx_data["txDate"] = datetime.utcnow()
+            tx_data["txDate"] = datetime.now(timezone.utc)
 
         # Link to LLM response and receipt
         if llm_response_id:
