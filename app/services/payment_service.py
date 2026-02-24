@@ -8,7 +8,7 @@ import logging
 import uuid
 import hashlib
 import hmac
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 import httpx
@@ -37,7 +37,7 @@ async def create_payment_order(
         amount = plan_config["price"]
 
         # Generate unique transaction ID
-        tx_id = f"TRK-{int(datetime.utcnow().timestamp())}-{uuid.uuid4().hex[:8]}"
+        tx_id = f"TRK-{int(datetime.now(timezone.utc).timestamp())}-{uuid.uuid4().hex[:8]}"
 
         # Create payment record
         payment = await prisma.payment.create(
@@ -47,7 +47,7 @@ async def create_payment_order(
                 "plan": plan,
                 "amount": amount,
                 "status": "pending",
-                "expiresAt": datetime.utcnow() + timedelta(minutes=30),
+                "expiresAt": datetime.now(timezone.utc) + timedelta(minutes=30),
             }
         )
 
@@ -110,7 +110,7 @@ async def handle_trakteer_webhook(payload: Dict) -> Dict:
                 where={"id": payment.id},
                 data={
                     "status": "paid",
-                    "paidAt": datetime.utcnow(),
+                    "paidAt": datetime.now(timezone.utc),
                 },
             )
 
@@ -163,7 +163,7 @@ async def check_payment_status(payment_id: int) -> Dict:
 
         is_expired = (
             payment.expiresAt
-            and payment.expiresAt < datetime.utcnow()
+            and payment.expiresAt < datetime.now(timezone.utc)
             and payment.status == "pending"
         )
 
