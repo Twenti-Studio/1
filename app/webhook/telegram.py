@@ -58,10 +58,12 @@ async def send_telegram_message(
             "parse_mode": parse_mode,
         }
         if reply_markup:
-            payload["reply_markup"] = json.dumps(reply_markup)
+            payload["reply_markup"] = reply_markup
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(TELEGRAM_SEND_URL, json=payload)
+            if not resp.is_success:
+                logger.error(f"Telegram sendMessage failed: {resp.status_code} {resp.text}")
             resp.raise_for_status()
             return True
 
@@ -181,10 +183,12 @@ async def edit_telegram_message(
             "parse_mode": parse_mode,
         }
         if reply_markup:
-            payload["reply_markup"] = json.dumps(reply_markup)
+            payload["reply_markup"] = reply_markup
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(TELEGRAM_EDIT_MSG_URL, json=payload)
+            if not resp.is_success:
+                logger.error(f"Telegram editMessage failed: {resp.status_code} {resp.text}")
             resp.raise_for_status()
             return True
 
