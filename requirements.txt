@@ -38,6 +38,7 @@ aiofiles==23.2.1
 # Web Framework
 fastapi==0.115.0
 uvicorn[standard]==0.30.0
+python-multipart==0.0.9
 
 # QRIS/QR Code
 qrcode[pil]>=7.4
