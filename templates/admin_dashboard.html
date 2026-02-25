@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FiNot Admin - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --sidebar: #111827;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+            --accent: #c084fc;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--sidebar);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+        }
+
+        .logo {
+            padding: 2rem;
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            flex: 1;
+            padding: 0 1rem;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 0.875rem 1rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            border-radius: 0.75rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+
+        .logout {
+            padding: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Main Content */
+        .main {
+            margin-left: 260px;
+            flex: 1;
+            padding: 2.5rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.875rem;
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-label {
+            color: var(--text-dim);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        /* Table */
+        .card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 1rem 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text-dim);
+            font-weight: 400;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .plan-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .plan-pro {
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+        }
+
+        .plan-elite {
+            background: rgba(192, 132, 252, 0.1);
+            color: #c084fc;
+        }
+
+        .plan-free {
+            background: rgba(148, 163, 184, 0.1);
+            color: #94a3b8;
+        }
+
+        .user-id {
+            font-family: monospace;
+            color: var(--text-dim);
+            font-size: 0.875rem;
+        }
+
+        .credits {
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo">FiNot ✨</div>
+        <nav class="nav-links">
+            <a href="/admin/dashboard" class="nav-item active">Users & Credits</a>
+            <a href="/admin/vouchers" class="nav-item">Voucher Management</a>
+        </nav>
+        <div class="logout">
+            <a href="/admin/logout" class="nav-item">Sign Out</a>
+        </div>
+    </div>
+
+    <main class="main">
+        <div class="header">
+            <h1>User Management</h1>
+            <div class="user-meta">Welcome, {{ admin }}</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Users</div>
+                <div class="stat-value">{{ users|length }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Active Premium</div>
+                <div class="stat-value">
+                    {% set premium_count = 0 %}
+                    {% for u in users %}{% if u.plan != 'free' %}{% set premium_count = premium_count + 1 %}{% endif
+                    %}{% endfor %}
+                    {{ premium_count }}
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 style="font-size: 1.25rem; margin: 0;">System Users</h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Plan</th>
+                        <th>Credits</th>
+                        <th>Joined</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600;">{{ user.display_name }}</div>
+                            <div class="user-id">@{{ user.username }} • {{ user.id }}</div>
+                        </td>
+                        <td>
+                            <span class="plan-badge plan-{{ user.plan }}">{{ user.plan }}</span>
+                        </td>
+                        <td>
+                            <div class="credits">
+                                {{ user.credits_remaining }} <span
+                                    style="color: var(--text-dim); font-weight: normal;">/ {{ user.credits_total
+                                    }}</span>
+                            </div>
+                        </td>
+                        <td style="color: var(--text-dim); font-size: 0.875rem;">
+                            {{ user.created_at.strftime('%d %b %Y') }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</body>
+
+</html>

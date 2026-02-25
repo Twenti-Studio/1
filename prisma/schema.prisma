@@ -175,3 +175,30 @@ model Transaction {
   @@index([intent])
   @@map("transactions")
 }
+
+// ═══════════════════════════════════════════
+// NEW: VOUCHER & ADMIN MODELS
+// ═══════════════════════════════════════════
+
+model Voucher {
+  id           Int      @id @default(autoincrement())
+  code         String   @unique
+  plan         String   // pro | elite
+  durationDays Int      @map("duration_days")
+  isUsed       Boolean  @default(false) @map("is_used")
+  usedByUserId BigInt?  @map("used_by_user_id")
+  targetUser   String?  @map("target_user") // Note: Telegram username or WhatsApp
+  createdAt    DateTime @default(now()) @map("created_at")
+  usedAt       DateTime? @map("used_at")
+
+  @@map("vouchers")
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String   // Hashed password
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("admins")
+}

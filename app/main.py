@@ -16,6 +16,7 @@ import httpx
 from app.db import prisma, connect_db
 from app.webhook.telegram import router as telegram_router
 from app.webhook.trakteer import router as trakteer_router
+from app.routers.admin import router as admin_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -78,6 +79,7 @@ app = FastAPI(
 # ── Routes ─────────────────────────────────
 app.include_router(telegram_router)
 app.include_router(trakteer_router)
+app.include_router(admin_router)
 
 
 @app.get("/")

@@ -41,3 +41,6 @@ uvicorn[standard]==0.30.0
 
 # QRIS/QR Code
 qrcode[pil]>=7.4
+
+# Templates
+jinja2==3.1.2

@@ -590,6 +590,7 @@ async def _handle_upgrade_command(chat_id: int, user_id: int):
         "inline_keyboard": [
             [{"text": "💎 Beli PAKET PRO - Rp19.000", "callback_data": "buy:pro"}],
             [{"text": "💎 Beli PAKET ELITE - Rp49.000", "callback_data": "buy:elite"}],
+            [{"text": "🎟️ Rendeem Voucher", "callback_data": "redeem:voucher"}],
             [{"text": "🔙 Menu Utama", "callback_data": "menu:main"}],
         ]
     }
@@ -635,6 +636,10 @@ async def _handle_callback_query(
                 await _cb_back_to_main(chat_id, message_id)
             elif value == "upgrade":
                 await _cb_back_to_upgrade(chat_id, user_id, message_id)
+
+        elif action == "redeem":
+            if value == "voucher":
+                await _cb_start_redeem(chat_id, user_id, message_id)
 
         else:
             logger.warning(f"Unknown callback data: {cb_data}")
@@ -857,11 +862,27 @@ async def _cb_back_to_upgrade(chat_id: int, user_id: int, message_id: int):
         "inline_keyboard": [
             [{"text": "💎 Beli PAKET PRO - Rp19.000", "callback_data": "buy:pro"}],
             [{"text": "💎 Beli PAKET ELITE - Rp49.000", "callback_data": "buy:elite"}],
+            [{"text": "🎟️ Rendeem Voucher", "callback_data": "redeem:voucher"}],
             [{"text": "🔙 Menu Utama", "callback_data": "menu:main"}],
         ]
     }
 
     await send_telegram_message(chat_id, text, reply_markup=reply_markup)
+
+
+async def _cb_start_redeem(chat_id: int, user_id: int, message_id: int):
+    """Start voucher redemption process."""
+    await delete_telegram_message(chat_id, message_id)
+    
+    text = (
+        "🎟️ <b>Rendeem Voucher FiNot</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "Silakan kirimkan kode voucher Anda sekarang.\n"
+        "Contoh: <code>FN-ABCD1234EF56</code>\n\n"
+        "<i>Jika ingin membatalkan, ketik /upgrade</i>"
+    )
+    
+    await send_telegram_message(chat_id, text)
 
 
 async def _handle_history_command(chat_id: int, user_id: int, args: list):
@@ -1266,6 +1287,28 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
                 "\"beli makan 25rb\" atau \"gajian 5jt\"\n\n"
                 "Ketik /help untuk bantuan lengkap 😊"
             )
+
+        elif text.upper().startswith("FN-"):
+            # Handle voucher redemption
+            from app.services.voucher_service import redeem_voucher
+            
+            await send_telegram_message(chat_id, "⏳ Memproses voucher...")
+            result = await redeem_voucher(user_id, text)
+            
+            if result.get("success"):
+                await send_telegram_message(
+                    chat_id,
+                    f"✅ <b>Voucher Berhasil Diaktifkan!</b>\n\n"
+                    f"📦 Paket: <b>{result['plan'].upper()}</b>\n"
+                    f"⏳ Durasi: <b>{result['duration']} hari</b>\n\n"
+                    "Selamat menggunakan fitur premium dari FiNot! 🚀"
+                )
+            else:
+                await send_telegram_message(
+                    chat_id,
+                    f"❌ <b>Gagal Rendeem Voucher</b>\n\n"
+                    f"{result.get('error', 'Kode tidak valid.')}"
+                )
 
         elif intent == UserIntent.TRANSACTION or confidence < 0.6:
             # Process as transaction
