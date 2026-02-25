@@ -79,18 +79,19 @@ async def check_ai_credits(user_id: int) -> Dict:
         plan_config = PLAN_CONFIG.get(plan, PLAN_CONFIG["free"])
 
         if plan == "free":
-            # Free: 5 total credits, no refill
+            # Free: total credits from config, no refill
             credit = await prisma.aicredit.find_first(
                 where={"userId": user_id},
                 order={"createdAt": "desc"},
             )
 
             if not credit:
+                total_initial = plan_config.get("ai_credits_total", 5)
                 # Create initial credits
                 credit = await prisma.aicredit.create(
                     data={
                         "userId": user_id,
-                        "totalCredits": 5,
+                        "totalCredits": total_initial,
                         "usedCredits": 0,
                         "weekStartAt": _utcnow(),
                     }
@@ -156,8 +157,11 @@ async def consume_ai_credit(user_id: int, amount: int = 1) -> bool:
     try:
         credit_info = await check_ai_credits(user_id)
 
-        if not credit_info["has_credits"]:
-            _logger.warning(f"User {user_id} has no AI credits remaining")
+        if credit_info["remaining"] < amount:
+            _logger.warning(
+                f"User {user_id} has insufficient AI credits: "
+                f"requested {amount}, remaining {credit_info['remaining']}"
+            )
             return False
 
         plan = credit_info["plan"]
@@ -181,12 +185,16 @@ async def consume_ai_credit(user_id: int, amount: int = 1) -> bool:
             )
 
         if credit:
+            # Re-check remaining to be safe (avoid race condition if possible)
+            if (credit.totalCredits - credit.usedCredits) < amount:
+                return False
+
             await prisma.aicredit.update(
                 where={"id": credit.id},
                 data={"usedCredits": credit.usedCredits + amount},
             )
             _logger.info(
-                f"AI credit consumed for user {user_id}: "
+                f"AI credit consumed for user {user_id} (amount={amount}): "
                 f"{credit.usedCredits + amount}/{credit.totalCredits}"
             )
             return True

@@ -5,7 +5,7 @@ FastAPI application entry point.
 """
 
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import os
 
@@ -87,7 +87,7 @@ async def root():
         "name": "FiNot - AI Financial Assistant",
         "version": "2.0.0",
         "status": "running",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "features": [
             "Transaction Recording (Text/Photo/Voice)",
             "Daily AI Insight",
@@ -114,5 +114,5 @@ async def health():
     return {
         "status": "healthy" if db_ok else "degraded",
         "database": "connected" if db_ok else "disconnected",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }

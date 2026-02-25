@@ -208,6 +208,18 @@ Category options: makan, minuman, belanja, transportasi, tagihan, hiburan, keseh
     return system + "\n" + user_input
 
 
+def build_prompt(input_text: str, input_source: str = "text") -> str:
+    """Entry point untuk build prompt berdasarkan source (text/ocr/audio)."""
+    if input_source == "text":
+        return _build_text_prompt(input_text)
+    elif input_source == "ocr":
+        return _build_receipt_prompt(input_text)
+    elif input_source == "audio":
+        return _build_audio_prompt(input_text)
+    else:
+        return _build_text_prompt(input_text)
+
+
 # ═══════════════════════════════════════════
 # AI ANALYSIS PROMPTS (for premium features)
 # ═══════════════════════════════════════════

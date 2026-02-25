@@ -374,7 +374,7 @@ Kirim voice note → auto transkrip & catat!
 # RBAC MIDDLEWARE
 # ═══════════════════════════════════════════
 
-async def check_credits_and_consume(user_id: int, feature: str = None) -> dict:
+async def check_credits_and_consume(user_id: int, feature: str = None, amount: int = 1) -> dict:
     """
     Check and consume AI credit before processing.
     Returns {"allowed": True/False, "message": str}
@@ -393,12 +393,12 @@ async def check_credits_and_consume(user_id: int, feature: str = None) -> dict:
 
     # Check and consume credit
     credits = await check_ai_credits(user_id)
-    if not credits["has_credits"]:
+    if credits["remaining"] < amount:
         if plan == "free":
             return {
                 "allowed": False,
                 "message": (
-                    "⚠️ AI credit kamu sudah habis (5/5 digunakan).\n\n"
+                    f"⚠️ AI credit kamu tidak cukup (Butuh {amount}, Sisa {credits['remaining']}).\n\n"
                     "Upgrade ke Pro untuk 50 credit/minggu! 🚀\n"
                     "Ketik /upgrade untuk info."
                 ),
@@ -407,20 +407,20 @@ async def check_credits_and_consume(user_id: int, feature: str = None) -> dict:
             return {
                 "allowed": False,
                 "message": (
-                    f"⚠️ Kredit AI minggu ini sudah habis.\n"
-                    f"Sisa: {credits['remaining']}/{credits['total']}\n"
+                    f"⚠️ Kredit AI tidak cukup.\n"
+                    f"Butuh: {amount} Sisa: {credits['remaining']}/{credits['total']}\n"
                     f"Kredit akan di-reset setiap hari Senin."
                 ),
             }
 
-    consumed = await consume_ai_credit(user_id)
+    consumed = await consume_ai_credit(user_id, amount=amount)
     if not consumed:
         return {
             "allowed": False,
             "message": "⚠️ Gagal menggunakan kredit AI. Coba lagi.",
         }
 
-    return {"allowed": True, "credits_remaining": credits["remaining"] - 1}
+    return {"allowed": True, "credits_remaining": credits["remaining"] - amount}
 
 
 # ═══════════════════════════════════════════
@@ -1091,7 +1091,7 @@ async def _handle_simulate_command(chat_id: int, user_id: int, args: list):
     # Join args as natural language scenario
     scenario = " ".join(args) if args else "hemat 10000 per hari"
 
-    access = await check_credits_and_consume(user_id)
+    access = await check_credits_and_consume(user_id, amount=2)
     if not access["allowed"]:
         await send_telegram_message(chat_id, access["message"])
         return
@@ -1130,7 +1130,7 @@ async def _handle_analysis_command(chat_id: int, user_id: int, args: list):
 
     if period == "monthly":
         # Monthly is Elite only
-        access = await check_credits_and_consume(user_id, feature="monthly_analysis")
+        access = await check_credits_and_consume(user_id, feature="monthly_analysis", amount=5)
         if not access["allowed"]:
             await send_telegram_message(chat_id, access["message"])
             return
@@ -1166,7 +1166,7 @@ async def _handle_analysis_command(chat_id: int, user_id: int, args: list):
 
     else:
         # Weekly is Pro+
-        access = await check_credits_and_consume(user_id, feature="weekly_summary")
+        access = await check_credits_and_consume(user_id, feature="weekly_summary", amount=3)
         if not access["allowed"]:
             await send_telegram_message(chat_id, access["message"])
             return
