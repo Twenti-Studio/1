@@ -42,8 +42,7 @@ PLAN_CONFIG = {
     "free": {
         "name": "Free Plan",
         "price": 0,
-        "ai_credits_total": 5,        # 5 total, no refill
-        "ai_credits_weekly": 0,        # no weekly refill
+        "ai_credits_monthly": 5,      # 5 credits per month
         "features": [
             "Catat transaksi unlimited",
             "Prediksi sederhana",

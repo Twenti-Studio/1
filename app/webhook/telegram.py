@@ -398,9 +398,9 @@ async def check_credits_and_consume(user_id: int, feature: str = None, amount: i
             return {
                 "allowed": False,
                 "message": (
-                    f"⚠️ AI credit kamu tidak cukup (Butuh {amount}, Sisa {credits['remaining']}).\n\n"
+                    f"⚠️ AI credit kamu tidak cukup (Butuh {amount}, Sisa {credits['remaining']}/5).\n\n"
+                    "Kredit Free Plan (5/bulan) akan di-reset setiap awal bulan.\n"
                     "Upgrade ke Pro untuk 50 credit/minggu! 🚀\n"
-                    "Ketik /upgrade untuk info."
                 ),
             }
         else:
