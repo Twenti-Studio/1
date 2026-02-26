@@ -32,7 +32,7 @@ services:
       - TRAKTEER_WEBHOOK_SECRET=${TRAKTEER_WEBHOOK_SECRET}
       - TRAKTEER_PAGE_URL=${TRAKTEER_PAGE_URL}
       - WEBHOOK_URL=${WEBHOOK_URL}
-      - DEPLOYMENT_ENV=docker
+      - DEPLOYMENT_ENV=${DEPLOYMENT_ENV:-docker}
     ports:
       - "8000:8000"
     volumes:
