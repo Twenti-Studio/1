@@ -217,13 +217,13 @@ async def delete_telegram_message(chat_id: int, message_id: int) -> bool:
 def format_transaction_response(result: dict) -> str:
     """Format transaction processing result into user-friendly message."""
     if not result.get("success"):
-        return f"❌ {result.get('error', 'Terjadi kesalahan')}"
+        return f"{result.get('error', 'Terjadi kesalahan')}"
 
     transactions = result.get("transactions", [])
     source = result.get("source", "text")
 
     if not transactions:
-        return "⚠️ Tidak ada transaksi yang terdeteksi."
+        return "Tidak ada transaksi yang terdeteksi."
 
     lines = []
 
@@ -237,7 +237,7 @@ def format_transaction_response(result: dict) -> str:
     lines.append("")
 
     for i, tx in enumerate(transactions, 1):
-        emoji = "💰" if tx["intent"] == "income" else "💸"
+        emoji = "+" if tx["intent"] == "income" else "-"
         tipo = "Pemasukan" if tx["intent"] == "income" else "Pengeluaran"
         amount = tx["amount"]
 
@@ -245,10 +245,10 @@ def format_transaction_response(result: dict) -> str:
             lines.append(f"<b>#{i}</b>")
 
         lines.append(f"{emoji} {tipo}: <b>Rp {amount:,}</b>")
-        lines.append(f"📂 Kategori: {tx['category']}")
+        lines.append(f"Kategori: {tx['category']}")
 
         if tx.get("needs_review"):
-            lines.append("⚠️ <i>Perlu review</i>")
+            lines.append("<i>Perlu review</i>")
 
         lines.append("")
 
@@ -262,20 +262,20 @@ def format_subscription_status(status: dict) -> str:
     credits = status.get("credits", {})
 
     lines = [
-        "👤 <b>Status Akun FiNot</b>",
+        "Status Akun FiNot",
         "━━━━━━━━━━━━━━━━━━━━━━━━",
-        f"📋 Plan: <b>{plan_name}</b>",
-        f"🤖 Sisa AI Credit: <b>{credits.get('remaining', 0)}/{credits.get('total', 0)}</b>",
+        f"Plan: <b>{plan_name}</b>",
+        f"Sisa AI Credit: <b>{credits.get('remaining', 0)}/{credits.get('total', 0)}</b>",
     ]
 
     sub = status.get("subscription")
     if sub:
-        lines.append(f"📅 Berakhir: {sub.get('end_date', '-')[:10]}")
-        lines.append(f"⏳ Sisa hari: {sub.get('days_left', 0)} hari")
+        lines.append(f"Berakhir: {sub.get('end_date', '-')[:10]}")
+        lines.append(f"Sisa hari: {sub.get('days_left', 0)} hari")
 
     if plan == "free":
         lines.append("")
-        lines.append("💡 Upgrade untuk fitur lebih lengkap!")
+        lines.append("Upgrade untuk fitur lebih lengkap!")
         lines.append("Ketik /upgrade untuk lihat paket premium 🚀")
 
     return "\n".join(lines)
@@ -284,88 +284,88 @@ def format_subscription_status(status: dict) -> str:
 def format_upgrade_menu() -> str:
     """Format upgrade plan menu with details."""
     lines = [
-        "🚀 <b>Upgrade FiNot Premium</b>",
+        "<b>Upgrade FiNot Premium</b>",
         "━━━━━━━━━━━━━━━━━━━━━━━━",
         "",
     ]
 
     # Free plan
-    lines.append("🆓 <b>FREE PLAN</b> (Saat Ini)")
+    lines.append("<b>FREE PLAN</b> (Saat Ini)")
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-    lines.append("💰 Harga: <b>Gratis</b>")
-    lines.append("🎯 5 AI credit total (tanpa refill)")
+    lines.append("Harga: <b>Gratis</b>")
+    lines.append("5 AI credit total (tanpa refill)")
     for feat in PLAN_CONFIG['free']['features']:
         lines.append(f"  • {feat}")
     lines.append("")
 
     # Pro plan
-    lines.append("🥈 <b>PAKET PRO</b>")
+    lines.append("<b>PAKET PRO</b>")
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
     pro = PLAN_CONFIG['pro']
-    lines.append(f"💰 Harga: <b>Rp {pro['price']:,}</b>")
-    lines.append(f"⏳ Durasi: <b>{pro['duration_days']} Hari</b>")
-    lines.append(f"🤖 {pro['ai_credits_weekly']} AI credit/minggu")
-    lines.append(f"📊 ~Rp {pro['price']//pro['duration_days']:,}/hari")
+    lines.append(f"Harga: <b>Rp {pro['price']:,}</b>")
+    lines.append(f"Durasi: <b>{pro['duration_days']} Hari</b>")
+    lines.append(f"{pro['ai_credits_weekly']} AI credit/minggu")
+    lines.append(f"~Rp {pro['price']//pro['duration_days']:,}/hari")
     for feat in pro['features']:
         lines.append(f"  • {feat}")
     lines.append("")
 
     # Elite plan
-    lines.append("🥇 <b>PAKET ELITE</b>")
+    lines.append("<b>PAKET ELITE</b>")
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
     elite = PLAN_CONFIG['elite']
-    lines.append(f"💰 Harga: <b>Rp {elite['price']:,}</b>")
-    lines.append(f"⏳ Durasi: <b>{elite['duration_days']} Hari</b>")
-    lines.append(f"🤖 {elite['ai_credits_weekly']} AI credit/minggu")
-    lines.append(f"📊 ~Rp {elite['price']//elite['duration_days']:,}/hari")
+    lines.append(f"Harga: <b>Rp {elite['price']:,}</b>")
+    lines.append(f"Durasi: <b>{elite['duration_days']} Hari</b>")
+    lines.append(f"{elite['ai_credits_weekly']} AI credit/minggu")
+    lines.append(f" ~Rp {elite['price']//elite['duration_days']:,}/hari")
     for feat in elite['features']:
         lines.append(f"  • {feat}")
     lines.append("")
 
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-    lines.append("🔒 Pembayaran aman via QRIS (Trakteer)")
-    lines.append("⚡ Aktivasi otomatis setelah konfirmasi")
+    lines.append("Pembayaran aman via QRIS (Trakteer)")
+    lines.append("Aktivasi otomatis setelah konfirmasi")
 
     return "\n".join(lines)
 
 
 def format_help_message() -> str:
     """Format help/start message."""
-    return """🧠 <b>FiNot - AI Financial Assistant</b>
+    return """<b>FiNot - AI Financial Assistant</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-Halo! Saya FiNot, asisten keuangan pribadimu yang cerdas! 🤖
+Halo! Saya FiNot, asisten keuangan pribadimu yang cerdas! 
 
-<b>💬 Catat Transaksi</b>
+<b>Catat Transaksi</b>
 Kirim pesan seperti:
 • "beli makan 25rb"
 • "gajian 5jt"
 • "ongkos ojol 15rb dan makan siang 30rb"
 
-<b>📸 Scan Struk</b>
+<b>Scan Struk</b>
 Kirim foto struk/receipt → auto input!
 
-<b>🎙️ Pesan Suara</b>
+<b>Pesan Suara</b>
 Kirim voice note → auto transkrip & catat!
 
-<b>🤖 Fitur AI:</b>
-/insight - Insight harian 💡
-/predict [saldo] - Prediksi umur saldo 🔮
-/saving - Rekomendasi tabungan 💰
-/health - Skor kesehatan keuangan ❤️
-/simulate [nominal] - Simulasi hemat 📊
-/analysis - Analisis mingguan/bulanan 📈
+<b>Fitur AI:</b>
+/insight - Insight harian 
+/predict [saldo] - Prediksi umur saldo 
+/saving - Rekomendasi tabungan 
+/health - Skor kesehatan keuangan 
+/simulate [nominal] - Simulasi hemat 
+/analysis - Analisis mingguan/bulanan
 
-<b>📋 Data & Laporan:</b>
+<b>Data & Laporan:</b>
 /history - Riwayat transaksi
 /export - Download Excel
 /status - Status akun & kredit
 
-<b>💎 Premium:</b>
+<b>Premium:</b>
 /upgrade - Lihat paket premium
 /buy [plan] - Beli paket (QRIS)
 
-<b>ℹ️ Lainnya:</b>
+<b>Lainnya:</b>
 /help - Tampilkan bantuan ini
 """
 
@@ -386,8 +386,8 @@ async def check_credits_and_consume(user_id: int, feature: str = None, amount: i
         return {
             "allowed": False,
             "message": (
-                f"⛔ Fitur ini hanya tersedia untuk paket premium.\n"
-                f"Ketik /upgrade untuk lihat paket! 🚀"
+                f"Fitur ini hanya tersedia untuk paket premium.\n"
+                f"Ketik /upgrade untuk lihat paket!"
             ),
         }
 
@@ -398,16 +398,16 @@ async def check_credits_and_consume(user_id: int, feature: str = None, amount: i
             return {
                 "allowed": False,
                 "message": (
-                    f"⚠️ AI credit kamu tidak cukup (Butuh {amount}, Sisa {credits['remaining']}/5).\n\n"
+                    f"AI credit kamu tidak cukup (Butuh {amount}, Sisa {credits['remaining']}/5).\n\n"
                     "Kredit Free Plan (5/bulan) akan di-reset setiap awal bulan.\n"
-                    "Upgrade ke Pro untuk 50 credit/minggu! 🚀\n"
+                    "Upgrade ke Pro untuk 50 credit/minggu! \n"
                 ),
             }
         else:
             return {
                 "allowed": False,
                 "message": (
-                    f"⚠️ Kredit AI tidak cukup.\n"
+                    f"Kredit AI tidak cukup.\n"
                     f"Butuh: {amount} Sisa: {credits['remaining']}/{credits['total']}\n"
                     f"Kredit akan di-reset setiap hari Senin."
                 ),
@@ -417,7 +417,7 @@ async def check_credits_and_consume(user_id: int, feature: str = None, amount: i
     if not consumed:
         return {
             "allowed": False,
-            "message": "⚠️ Gagal menggunakan kredit AI. Coba lagi.",
+            "message": "Gagal menggunakan kredit AI. Coba lagi.",
         }
 
     return {"allowed": True, "credits_remaining": credits["remaining"] - amount}
@@ -518,7 +518,7 @@ async def _handle_update(chat_id: int, user_id: int, message: dict):
 
         await send_telegram_message(
             chat_id,
-            "❓ Maaf, saya belum bisa memproses jenis pesan ini.\n"
+            "Maaf, saya belum bisa memproses jenis pesan ini.\n"
             "Coba kirim teks, foto struk, atau pesan suara!"
         )
 
@@ -526,7 +526,7 @@ async def _handle_update(chat_id: int, user_id: int, message: dict):
         logger.error(f"Error handling update: {e}", exc_info=True)
         await send_telegram_message(
             chat_id,
-            "❌ Terjadi kesalahan. Silakan coba lagi."
+            "Terjadi kesalahan. Silakan coba lagi."
         )
 
 
@@ -577,7 +577,7 @@ async def _handle_command(chat_id: int, user_id: int, text: str):
     else:
         await send_telegram_message(
             chat_id,
-            "❓ Perintah tidak dikenali. Ketik /help untuk bantuan."
+            "Perintah tidak dikenali. Ketik /help untuk bantuan."
         )
 
 
@@ -588,9 +588,9 @@ async def _handle_upgrade_command(chat_id: int, user_id: int):
     # Inline keyboard with plan buttons
     reply_markup = {
         "inline_keyboard": [
-            [{"text": "💎 Beli PAKET PRO - Rp19.000", "callback_data": "buy:pro"}],
-            [{"text": "💎 Beli PAKET ELITE - Rp49.000", "callback_data": "buy:elite"}],
-            [{"text": "🎟️ Rendeem Voucher", "callback_data": "redeem:voucher"}],
+            [{"text": "1. Beli PAKET PRO - Rp19.000", "callback_data": "buy:pro"}],
+            [{"text": "2. Beli PAKET ELITE - Rp49.000", "callback_data": "buy:elite"}],
+            [{"text": "3. Rendeem Voucher", "callback_data": "redeem:voucher"}],
             [{"text": "🔙 Menu Utama", "callback_data": "menu:main"}],
         ]
     }
@@ -647,7 +647,7 @@ async def _handle_callback_query(
     except Exception as e:
         logger.error(f"Error handling callback query: {e}", exc_info=True)
         await send_telegram_message(
-            chat_id, "❌ Terjadi kesalahan. Silakan coba lagi."
+            chat_id, "Terjadi kesalahan. Silakan coba lagi."
         )
 
 
@@ -667,13 +667,13 @@ async def _cb_show_order_summary(
     now = datetime.now(timezone.utc)
 
     text = (
-        f"✅ <b>Konfirmasi Pesanan</b>\n"
+        f"<b>Konfirmasi Pesanan</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"📦 Paket: <b>{plan_config['name']}</b>\n"
-        f"💰 Harga: <b>Rp {price:,}</b>\n"
-        f"⏳ Durasi: <b>{duration} Hari</b>\n"
-        f"🤖 Kuota: <b>{plan_config['ai_credits_weekly']} AI credit/minggu</b>\n"
-        f"📊 Per Hari: ~Rp {price // duration:,}\n\n"
+        f"Paket: <b>{plan_config['name']}</b>\n"
+        f"Harga: <b>Rp {price:,}</b>\n"
+        f"Durasi: <b>{duration} Hari</b>\n"
+        f"Kuota: <b>{plan_config['ai_credits_weekly']} AI credit/minggu</b>\n"
+        f"Per Hari: ~Rp {price // duration:,}\n\n"
     )
 
     # Add features
@@ -687,7 +687,7 @@ async def _cb_show_order_summary(
 
     reply_markup = {
         "inline_keyboard": [
-            [{"text": "💳 Bayar Sekarang", "callback_data": f"confirm_buy:{plan}"}],
+            [{"text": "Bayar Sekarang", "callback_data": f"confirm_buy:{plan}"}],
             [{"text": "🔙 Kembali", "callback_data": "menu:upgrade"}],
         ]
     }
@@ -728,27 +728,27 @@ async def _cb_confirm_payment(
 
         # Caption for the QR photo
         caption = (
-            f"💳 <b>PEMBAYARAN — {plan_config['name']}</b>\n"
+            f"<b>PEMBAYARAN — {plan_config['name']}</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📦 Paket: <b>{plan_config['name']}</b>\n"
-            f"💰 Total: <b>Rp {plan_config['price']:,}</b>\n"
-            f"⏳ Durasi: <b>{plan_config['duration_days']} hari</b>\n"
-            f"🆔 ID: <code>{tx_id}</code>\n\n"
+            f"Paket: <b>{plan_config['name']}</b>\n"
+            f"Total: <b>Rp {plan_config['price']:,}</b>\n"
+            f"Durasi: <b>{plan_config['duration_days']} hari</b>\n"
+            f"ID: <code>{tx_id}</code>\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📱 <b>CARA BAYAR:</b>\n"
-            f"1️⃣ Scan QR di atas dengan kamera HP\n"
-            f"2️⃣ Buka halaman Trakteer yang muncul\n"
-            f"3️⃣ Pilih pembayaran QRIS\n"
-            f"4️⃣ Bayar dengan E-Wallet/M-Banking\n\n"
-            f"⚠️ Pastikan nominal <b>Rp {plan_config['price']:,}</b>\n"
-            f"⏰ Berlaku <b>30 menit</b>\n"
+            f"CARA BAYAR:\n"
+            f"1. Scan QR di atas dengan kamera HP\n"
+            f"2. Buka halaman Trakteer yang muncul\n"
+            f"3. Pilih pembayaran QRIS\n"
+            f"4. Bayar dengan E-Wallet/M-Banking\n\n"
+            f"Pastikan nominal <b>Rp {plan_config['price']:,}</b>\n"
+            f"Berlaku <b>30 menit</b>\n"
             f"🕐 {now.strftime('%d/%m/%Y %H:%M')}"
         )
 
         reply_markup = {
             "inline_keyboard": [
-                [{"text": "🔗 Buka Link Pembayaran", "url": trakteer_link}],
-                [{"text": "🔍 Cek Status", "callback_data": f"check_status:{payment_id}"}],
+                [{"text": "Buka Link Pembayaran", "url": trakteer_link}],
+                [{"text": "Cek Status", "callback_data": f"check_status:{payment_id}"}],
                 [{"text": "❌ Batalkan", "callback_data": "cancel_buy:0"}],
             ]
         }
@@ -765,7 +765,7 @@ async def _cb_confirm_payment(
         logger.error(f"Error creating payment: {e}", exc_info=True)
         await send_telegram_message(
             chat_id,
-            "❌ Gagal membuat pesanan. Silakan coba lagi.\n"
+            "Gagal membuat pesanan. Silakan coba lagi.\n"
             "Ketik /upgrade untuk mencoba kembali.",
         )
 
@@ -776,7 +776,7 @@ async def _cb_cancel_order(chat_id: int, user_id: int, message_id: int):
     await delete_telegram_message(chat_id, message_id)
 
     text = (
-        "❌ <b>Pesanan Dibatalkan</b>\n\n"
+        "<b>Pesanan Dibatalkan</b>\n\n"
         "Pembayaran telah dibatalkan.\n"
         "Ketik /upgrade kapan saja untuk melihat paket lagi! 😊"
     )
@@ -793,7 +793,7 @@ async def _cb_check_payment_status(
 
         if not result.get("found"):
             await send_telegram_message(
-                chat_id, "❓ Payment tidak ditemukan."
+                chat_id, "Payment tidak ditemukan."
             )
             return
 
@@ -801,7 +801,7 @@ async def _cb_check_payment_status(
 
         if status == "paid":
             text = (
-                "✅ <b>Pembayaran Berhasil!</b>\n\n"
+                "<b>Pembayaran Berhasil!</b>\n\n"
                 f"🎉 Paket <b>{result.get('plan', '').upper()}</b> sudah aktif!\n"
                 "Ketik /status untuk melihat detail langganan."
             )
@@ -809,7 +809,7 @@ async def _cb_check_payment_status(
 
         elif status == "expired":
             text = (
-                "⏰ <b>Pembayaran Kedaluwarsa</b>\n\n"
+                "<b>Pembayaran Kedaluwarsa</b>\n\n"
                 "Pesanan telah melewati batas waktu 30 menit.\n"
                 "Ketik /upgrade untuk membuat pesanan baru."
             )
@@ -817,16 +817,16 @@ async def _cb_check_payment_status(
 
         elif status == "pending":
             text = (
-                "⏳ <b>Menunggu Pembayaran</b>\n\n"
-                f"💰 Total: <b>Rp {result.get('amount', 0):,}</b>\n"
-                f"📦 Paket: <b>{result.get('plan', '').upper()}</b>\n\n"
+                "<b>Menunggu Pembayaran</b>\n\n"
+                f"Total: <b>Rp {result.get('amount', 0):,}</b>\n"
+                f"Paket: <b>{result.get('plan', '').upper()}</b>\n\n"
                 "Silakan selesaikan pembayaran via Trakteer.\n"
                 "Klik tombol \"Bayar via Trakteer\" di pesan sebelumnya."
             )
 
             reply_markup = {
                 "inline_keyboard": [
-                    [{"text": "🔄 Cek Lagi", "callback_data": f"check_status:{payment_id}"}],
+                    [{"text": "Cek Lagi", "callback_data": f"check_status:{payment_id}"}],
                 ]
             }
             await send_telegram_message(chat_id, text, reply_markup=reply_markup)
@@ -834,14 +834,14 @@ async def _cb_check_payment_status(
         else:
             await send_telegram_message(
                 chat_id,
-                f"📋 Status pembayaran: <b>{status}</b>\n"
+                f"Status pembayaran: <b>{status}</b>\n"
                 "Ketik /upgrade untuk membuat pesanan baru.",
             )
 
     except Exception as e:
         logger.error(f"Error checking payment status: {e}", exc_info=True)
         await send_telegram_message(
-            chat_id, "❌ Gagal mengecek status. Coba lagi nanti."
+            chat_id, "Gagal mengecek status. Coba lagi nanti."
         )
 
 
@@ -860,9 +860,9 @@ async def _cb_back_to_upgrade(chat_id: int, user_id: int, message_id: int):
 
     reply_markup = {
         "inline_keyboard": [
-            [{"text": "💎 Beli PAKET PRO - Rp19.000", "callback_data": "buy:pro"}],
-            [{"text": "💎 Beli PAKET ELITE - Rp49.000", "callback_data": "buy:elite"}],
-            [{"text": "🎟️ Rendeem Voucher", "callback_data": "redeem:voucher"}],
+            [{"text": "1. Beli PAKET PRO - Rp19.000", "callback_data": "buy:pro"}],
+            [{"text": "2.Beli PAKET ELITE - Rp49.000", "callback_data": "buy:elite"}],
+            [{"text": "Rendeem Voucher", "callback_data": "redeem:voucher"}],
             [{"text": "🔙 Menu Utama", "callback_data": "menu:main"}],
         ]
     }
@@ -875,7 +875,7 @@ async def _cb_start_redeem(chat_id: int, user_id: int, message_id: int):
     await delete_telegram_message(chat_id, message_id)
     
     text = (
-        "🎟️ <b>Rendeem Voucher FiNot</b>\n"
+        "<b>Rendeem Voucher FiNot</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "Silakan kirimkan kode voucher Anda sekarang.\n"
         "Contoh: <code>FN-ABCD1234EF56</code>\n\n"
@@ -906,7 +906,7 @@ async def _handle_history_command(chat_id: int, user_id: int, args: list):
         logger.error(f"Error getting history: {e}", exc_info=True)
         await send_telegram_message(
             chat_id,
-            "❌ Gagal mengambil riwayat. Coba: /history today|week|month|year"
+            " Gagal mengambil riwayat. Coba: /history today|week|month|year"
         )
 
 
@@ -932,12 +932,12 @@ async def _handle_export_command(chat_id: int, user_id: int, args: list):
         await send_telegram_document(
             chat_id,
             file_path,
-            caption=f"📊 Laporan transaksi FiNot ({period})"
+            caption=f"Laporan transaksi FiNot ({period})"
         )
 
     except Exception as e:
         logger.error(f"Error exporting: {e}", exc_info=True)
-        await send_telegram_message(chat_id, "❌ Gagal membuat laporan.")
+        await send_telegram_message(chat_id, "Gagal membuat laporan.")
 
 
 async def _handle_insight_command(chat_id: int, user_id: int):
@@ -951,13 +951,13 @@ async def _handle_insight_command(chat_id: int, user_id: int):
     try:
         from worker.analysis_service import get_daily_insight
 
-        await send_telegram_message(chat_id, "🔍 Menganalisis transaksi hari ini...")
+        await send_telegram_message(chat_id, "Menganalisis transaksi hari ini...")
 
         result = await get_daily_insight(user_id)
 
         if result.get("success"):
             data = result["data"]
-            emoji = data.get("emoji_mood", "📊")
+            emoji = data.get("emoji_mood")
             insight = data.get("insight", "Tidak ada insight tersedia.")
             tip = data.get("tip", "")
 
@@ -965,16 +965,16 @@ async def _handle_insight_command(chat_id: int, user_id: int):
                 f"{emoji} <b>Daily Insight</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"{insight}\n\n"
-                f"💡 <b>Tip:</b> {tip}"
+                f"💡 <b>Tips:</b> {tip}"
             )
         else:
-            message = "⚠️ Belum ada data cukup. Catat beberapa transaksi dulu ya!"
+            message = "Belum ada data cukup. Catat beberapa transaksi dulu ya!"
 
         await send_telegram_message(chat_id, message)
 
     except Exception as e:
         logger.error(f"Error in insight: {e}", exc_info=True)
-        await send_telegram_message(chat_id, "❌ Gagal menganalisis.")
+        await send_telegram_message(chat_id, "Gagal menganalisis.")
 
 
 async def _handle_predict_command(chat_id: int, user_id: int, args: list):
@@ -1000,19 +1000,19 @@ async def _handle_predict_command(chat_id: int, user_id: int, args: list):
             message = (
                 f"🔮 <b>Prediksi Umur Saldo</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"💰 Saldo saat ini: <b>Rp {balance:,}</b>\n"
-                f"📊 Rata-rata pengeluaran/hari: <b>Rp {data.get('daily_avg_expense', 0):,}</b>\n"
-                f"📅 Estimasi bertahan: <b>±{days} hari</b>\n\n"
-                f"📝 {explanation}"
+                f"Saldo saat ini: <b>Rp {balance:,}</b>\n"
+                f"Rata-rata pengeluaran/hari: <b>Rp {data.get('daily_avg_expense', 0):,}</b>\n"
+                f"Estimasi bertahan: <b>±{days} hari</b>\n\n"
+                f"{explanation}"
             )
         else:
-            message = "⚠️ Belum cukup data. Catat transaksi dulu minimal 3 hari."
+            message = "Belum cukup data. Catat transaksi dulu minimal 3 hari."
 
         await send_telegram_message(chat_id, message)
 
     except Exception as e:
         logger.error(f"Error in prediction: {e}", exc_info=True)
-        await send_telegram_message(chat_id, "❌ Gagal memprediksi.")
+        await send_telegram_message(chat_id, "Gagal memprediksi.")
 
 
 async def _handle_saving_command(chat_id: int, user_id: int):
@@ -1025,33 +1025,33 @@ async def _handle_saving_command(chat_id: int, user_id: int):
     try:
         from worker.analysis_service import get_saving_recommendation
 
-        await send_telegram_message(chat_id, "💰 Menganalisis pola keuanganmu...")
+        await send_telegram_message(chat_id, "Menganalisis pola keuanganmu...")
 
         result = await get_saving_recommendation(user_id)
 
         if result.get("success"):
             data = result["data"]
             message = (
-                f"💰 <b>Rekomendasi Tabungan</b>\n"
+                f"<b>Rekomendasi Tabungan</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"💵 Net Income: <b>Rp {data.get('net_income', 0):,}</b>\n"
-                f"💸 Total Pengeluaran: <b>Rp {data.get('total_expense', 0):,}</b>\n"
-                f"🎯 Rekomendasi Tabungan: <b>Rp {data.get('recommended_saving', 0):,}/bulan</b>\n"
-                f"📊 Persentase: {data.get('saving_percentage', 0)}%\n\n"
-                f"📝 <b>Strategi:</b>\n{data.get('strategy', '-')}\n\n"
+                f"Net Income: <b>Rp {data.get('net_income', 0):,}</b>\n"
+                f"Total Pengeluaran: <b>Rp {data.get('total_expense', 0):,}</b>\n"
+                f"Rekomendasi Tabungan: <b>Rp {data.get('recommended_saving', 0):,}/bulan</b>\n"
+                f"Persentase: {data.get('saving_percentage', 0)}%\n\n"
+                f"<b>Strategi:</b>\n{data.get('strategy', '-')}\n\n"
                 f"💡 <b>Tips:</b>"
             )
             tips = data.get("specific_tips", [])
             for tip in tips:
                 message += f"\n• {tip}"
         else:
-            message = "⚠️ Belum cukup data untuk analisis."
+            message = "Belum cukup data untuk analisis."
 
         await send_telegram_message(chat_id, message)
 
     except Exception as e:
         logger.error(f"Error in saving: {e}", exc_info=True)
-        await send_telegram_message(chat_id, "❌ Gagal menganalisis.")
+        await send_telegram_message(chat_id, "Gagal menganalisis.")
 
 
 async def _handle_health_command(chat_id: int, user_id: int):
@@ -1087,24 +1087,24 @@ async def _handle_health_command(chat_id: int, user_id: int):
                 f"❤️ <b>Financial Health Score</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"{emoji} Skor: <b>{score}/100 (Grade {grade})</b>\n\n"
-                f"📊 Detail:\n"
-                f"  💰 Saving Ratio: {data.get('saving_ratio_score', 0)}/35\n"
-                f"  📈 Stabilitas: {data.get('stability_score', 0)}/30\n"
-                f"  💸 Cash Flow: {data.get('cashflow_score', 0)}/35\n\n"
-                f"📝 {data.get('summary', '-')}\n\n"
-                f"💡 <b>Saran:</b>"
+                f"Detail:\n"
+                f"  Saving Ratio: {data.get('saving_ratio_score', 0)}/35\n"
+                f"  Stabilitas: {data.get('stability_score', 0)}/30\n"
+                f"  Cash Flow: {data.get('cashflow_score', 0)}/35\n\n"
+                f"{data.get('summary', '-')}\n\n"
+                f"<b>Saran:</b>"
             )
             recs = data.get("recommendations", [])
             for rec in recs:
                 message += f"\n• {rec}"
         else:
-            message = "⚠️ Belum cukup data untuk menghitung skor."
+            message = "Belum cukup data untuk menghitung skor."
 
         await send_telegram_message(chat_id, message)
 
     except Exception as e:
         logger.error(f"Error in health score: {e}", exc_info=True)
-        await send_telegram_message(chat_id, "❌ Gagal menghitung skor.")
+        await send_telegram_message(chat_id, "Gagal menghitung skor.")
 
 
 async def _handle_simulate_command(chat_id: int, user_id: int, args: list):
@@ -1120,29 +1120,29 @@ async def _handle_simulate_command(chat_id: int, user_id: int, args: list):
     try:
         from worker.analysis_service import get_saving_simulation
 
-        await send_telegram_message(chat_id, f"📊 Mensimulasikan: {scenario}...")
+        await send_telegram_message(chat_id, f"Mensimulasikan: {scenario}...")
 
         result = await get_saving_simulation(user_id, user_scenario=scenario)
 
         if result.get("success"):
             data = result["data"]
             message = (
-                f"📊 <b>Simulasi Hemat</b>\n"
+                f"<b>Simulasi Hemat</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🎯 Skenario: <b>{data.get('scenario', scenario)}</b>\n\n"
-                f"💰 Hemat per bulan: <b>Rp {data.get('monthly_saving', 0):,}</b>\n"
-                f"💎 Hemat per tahun: <b>Rp {data.get('yearly_saving', 0):,}</b>\n"
-                f"⏱️ Umur saldo bertambah: <b>+{data.get('extra_balance_days', 0)} hari</b>\n\n"
+                f"Skenario: <b>{data.get('scenario', scenario)}</b>\n\n"
+                f"Hemat per bulan: <b>Rp {data.get('monthly_saving', 0):,}</b>\n"
+                f"Hemat per tahun: <b>Rp {data.get('yearly_saving', 0):,}</b>\n"
+                f"Umur saldo bertambah: <b>+{data.get('extra_balance_days', 0)} hari</b>\n\n"
                 f"✨ {data.get('message', '')}"
             )
         else:
-            message = "⚠️ Belum cukup data untuk simulasi."
+            message = "Belum cukup data untuk simulasi."
 
         await send_telegram_message(chat_id, message)
 
     except Exception as e:
         logger.error(f"Error in simulation: {e}", exc_info=True)
-        await send_telegram_message(chat_id, "❌ Gagal menjalankan simulasi.")
+        await send_telegram_message(chat_id, "Gagal menjalankan simulasi.")
 
 
 async def _handle_analysis_command(chat_id: int, user_id: int, args: list):
@@ -1159,31 +1159,31 @@ async def _handle_analysis_command(chat_id: int, user_id: int, args: list):
         try:
             from worker.analysis_service import get_monthly_analysis
 
-            await send_telegram_message(chat_id, "📈 Menganalisis data bulanan...")
+            await send_telegram_message(chat_id, "Menganalisis data bulanan...")
             result = await get_monthly_analysis(user_id)
 
             if result.get("success"):
                 data = result["data"]
                 message = (
-                    f"📈 <b>Monthly Deep Analysis</b>\n"
+                    f"<b>Monthly Deep Analysis</b>\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"💰 Pemasukan: <b>Rp {data.get('total_income', 0):,}</b>\n"
-                    f"💸 Pengeluaran: <b>Rp {data.get('total_expense', 0):,}</b>\n"
-                    f"📊 Net: <b>Rp {data.get('net_income', 0):,}</b>\n"
-                    f"📈 Tren: {data.get('spending_trend', '-')}\n\n"
-                    f"🧠 {data.get('deep_insight', '-')}\n\n"
-                    f"🎯 <b>Prioritas Aksi:</b>"
+                    f"Pemasukan: <b>Rp {data.get('total_income', 0):,}</b>\n"
+                    f"Pengeluaran: <b>Rp {data.get('total_expense', 0):,}</b>\n"
+                    f"Net: <b>Rp {data.get('net_income', 0):,}</b>\n"
+                    f"Tren: {data.get('spending_trend', '-')}\n\n"
+                    f"{data.get('deep_insight', '-')}\n\n"
+                    f"<b>Prioritas Aksi:</b>"
                 )
                 for action in data.get("priority_actions", []):
                     message += f"\n• {action}"
             else:
-                message = "⚠️ Belum cukup data untuk analisis bulanan."
+                message = "Belum cukup data untuk analisis bulanan."
 
             await send_telegram_message(chat_id, message)
 
         except Exception as e:
             logger.error(f"Error in monthly analysis: {e}", exc_info=True)
-            await send_telegram_message(chat_id, "❌ Gagal menganalisis.")
+            await send_telegram_message(chat_id, "Gagal menganalisis.")
 
     else:
         # Weekly is Pro+
@@ -1195,30 +1195,30 @@ async def _handle_analysis_command(chat_id: int, user_id: int, args: list):
         try:
             from worker.analysis_service import get_weekly_analysis
 
-            await send_telegram_message(chat_id, "📊 Menganalisis data mingguan...")
+            await send_telegram_message(chat_id, "Menganalisis data mingguan...")
             result = await get_weekly_analysis(user_id)
 
             if result.get("success"):
                 data = result["data"]
                 message = (
-                    f"📊 <b>Weekly Analysis</b>\n"
+                    f"<b>Weekly Analysis</b>\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"💰 Pemasukan: <b>Rp {data.get('total_income', 0):,}</b>\n"
-                    f"💸 Pengeluaran: <b>Rp {data.get('total_expense', 0):,}</b>\n"
-                    f"📊 Net: <b>Rp {data.get('net', 0):,}</b>\n\n"
-                    f"📋 {data.get('insight', '-')}\n\n"
-                    f"💡 <b>Action Items:</b>"
+                    f"Pemasukan: <b>Rp {data.get('total_income', 0):,}</b>\n"
+                    f"Pengeluaran: <b>Rp {data.get('total_expense', 0):,}</b>\n"
+                    f"Net: <b>Rp {data.get('net', 0):,}</b>\n\n"
+                    f"{data.get('insight', '-')}\n\n"
+                    f"<b>Action Items:</b>"
                 )
                 for item in data.get("action_items", []):
                     message += f"\n• {item}"
             else:
-                message = "⚠️ Belum cukup data untuk analisis mingguan."
+                message = "Belum cukup data untuk analisis mingguan."
 
             await send_telegram_message(chat_id, message)
 
         except Exception as e:
             logger.error(f"Error in weekly analysis: {e}", exc_info=True)
-            await send_telegram_message(chat_id, "❌ Gagal menganalisis.")
+            await send_telegram_message(chat_id, "Gagal menganalisis.")
 
 
 # ═══════════════════════════════════════════
@@ -1282,7 +1282,7 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
         elif intent == UserIntent.SMALL_TALK:
             await send_telegram_message(
                 chat_id,
-                "Halo! 👋 Saya FiNot, asisten keuanganmu.\n\n"
+                "Halo! Saya FiNot, asisten keuanganmu.\n\n"
                 "Mau catat transaksi? Langsung kirim aja pesan seperti:\n"
                 "\"beli makan 25rb\" atau \"gajian 5jt\"\n\n"
                 "Ketik /help untuk bantuan lengkap 😊"
@@ -1292,21 +1292,21 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
             # Handle voucher redemption
             from app.services.voucher_service import redeem_voucher
             
-            await send_telegram_message(chat_id, "⏳ Memproses voucher...")
+            await send_telegram_message(chat_id, "Memproses voucher...")
             result = await redeem_voucher(user_id, text)
             
             if result.get("success"):
                 await send_telegram_message(
                     chat_id,
-                    f"✅ <b>Voucher Berhasil Diaktifkan!</b>\n\n"
-                    f"📦 Paket: <b>{result['plan'].upper()}</b>\n"
-                    f"⏳ Durasi: <b>{result['duration']} hari</b>\n\n"
+                    f"<b>Voucher Berhasil Diaktifkan!</b>\n\n"
+                    f"Paket: <b>{result['plan'].upper()}</b>\n"
+                    f"Durasi: <b>{result['duration']} hari</b>\n\n"
                     "Selamat menggunakan fitur premium dari FiNot! 🚀"
                 )
             else:
                 await send_telegram_message(
                     chat_id,
-                    f"❌ <b>Gagal Rendeem Voucher</b>\n\n"
+                    f"<b>Gagal Rendeem Voucher</b>\n\n"
                     f"{result.get('error', 'Kode tidak valid.')}"
                 )
 
@@ -1319,7 +1319,7 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
 
     except Exception as e:
         logger.error(f"Error handling text: {e}", exc_info=True)
-        await send_telegram_message(chat_id, "❌ Terjadi kesalahan. Silakan coba lagi.")
+        await send_telegram_message(chat_id, "Terjadi kesalahan. Silakan coba lagi.")
 
 
 async def _process_text_transaction(chat_id: int, user_id: int, text: str):
@@ -1339,7 +1339,7 @@ async def _process_text_transaction(chat_id: int, user_id: int, text: str):
 
     except Exception as e:
         logger.error(f"Error processing text transaction: {e}", exc_info=True)
-        await send_telegram_message(chat_id, "❌ Gagal memproses transaksi.")
+        await send_telegram_message(chat_id, "Gagal memproses transaksi.")
 
 
 async def _handle_photo(
@@ -1353,7 +1353,7 @@ async def _handle_photo(
         await send_telegram_message(
             chat_id,
             "📸 Fitur Scan Struk hanya tersedia untuk paket Pro & Elite.\n\n"
-            "Ketik /upgrade untuk info upgrade! 🚀"
+            "Ketik /upgrade untuk info upgrade!"
         )
         return
 
@@ -1364,7 +1364,7 @@ async def _handle_photo(
         return
 
     try:
-        await send_telegram_message(chat_id, "📸 Memproses struk... Mohon tunggu.")
+        await send_telegram_message(chat_id, "Memproses struk... Mohon tunggu.")
 
         # Get file_id
         if is_document:
@@ -1396,7 +1396,7 @@ async def _handle_photo(
         response = format_transaction_response(result)
 
         if result.get("ocr_confidence"):
-            response += f"\n📊 OCR Confidence: {result['ocr_confidence']:.0f}%"
+            response += f"\OCR Confidence: {result['ocr_confidence']:.0f}%"
 
         await send_telegram_message(chat_id, response)
 
@@ -1404,7 +1404,7 @@ async def _handle_photo(
         logger.error(f"Error handling photo: {e}", exc_info=True)
         await send_telegram_message(
             chat_id,
-            "❌ Gagal memproses foto. Pastikan foto struk jelas dan coba lagi."
+            "Gagal memproses foto. Pastikan foto struk jelas dan coba lagi."
         )
 
 
@@ -1417,7 +1417,7 @@ async def _handle_audio(chat_id: int, user_id: int, message: dict):
         return
 
     try:
-        await send_telegram_message(chat_id, "🎙️ Memproses pesan suara... Mohon tunggu.")
+        await send_telegram_message(chat_id, "Memproses pesan suara... Mohon tunggu.")
 
         # Get file_id
         voice = message.get("voice") or message.get("audio")
@@ -1437,5 +1437,5 @@ async def _handle_audio(chat_id: int, user_id: int, message: dict):
         logger.error(f"Error handling audio: {e}", exc_info=True)
         await send_telegram_message(
             chat_id,
-            "❌ Gagal memproses pesan suara. Coba rekam ulang atau ketik manual."
+            "Gagal memproses pesan suara. Coba rekam ulang atau ketik manual."
         )

@@ -169,7 +169,7 @@ async def handle_trakteer_webhook(payload: Dict) -> Dict:
         )
 
         _logger.info(
-            f"✅ Payment confirmed and subscription activated: "
+            f"Payment confirmed and subscription activated: "
             f"user={payment.userId}, plan={payment.plan}, payment_id={payment.id}"
         )
 

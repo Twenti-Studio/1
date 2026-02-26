@@ -43,7 +43,7 @@ async def trakteer_webhook(request: Request):
             plan = result.get("plan", "pro")
 
             message = (
-                f"✅ <b>Pembayaran Berhasil!</b>\n\n"
+                f"<b>Pembayaran Berhasil!</b>\n\n"
                 f"🎉 Selamat! Kamu sekarang pengguna <b>{plan.upper()}</b>!\n\n"
                 f"Fitur premium sudah aktif. Ketik /status untuk cek detail.\n\n"
                 f"Terima kasih sudah mendukung FiNot! 🙏"

@@ -67,20 +67,20 @@ def build_history_summary(label: str, txs: List[Transaction]) -> str:
     count = len(txs)
 
     lines = [
-        f"📊 Ringkasan transaksi {label}:",
+        f"Ringkasan transaksi {label}:",
         f"━━━━━━━━━━━━━━━━━━━━━━━━",
-        f"• Jumlah transaksi: {count}",
-        f"💰 Total Pemasukan: Rp {income:,.0f}",
-        f"💸 Total Pengeluaran: Rp {expense:,.0f}",
-        f"📈 Net: Rp {income - expense:,.0f}",
+        f"Jumlah transaksi: {count}",
+        f"Total Pemasukan: Rp {income:,.0f}",
+        f"Total Pengeluaran: Rp {expense:,.0f}",
+        f"Net: Rp {income - expense:,.0f}",
         "",
     ]
 
-    lines.append("📋 Transaksi terakhir:")
+    lines.append("Transaksi terakhir:")
     for tx in txs[-5:]:
         dt = tx.txDate or tx.createdAt
         date_str = dt.strftime("%Y-%m-%d")
-        emoji = "💰" if tx.intent == "income" else "💸"
+        emoji = "+" if tx.intent == "income" else "-"
         lines.append(
             f"  {emoji} {date_str}: Rp {tx.amount:,.0f} [{tx.category}]"
         )
