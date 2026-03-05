@@ -1,4 +1,4 @@
-import { ArrowPathIcon, ArrowRightStartOnRectangleIcon, Bars3Icon, Squares2X2Icon, TicketIcon, UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ArrowRightStartOnRectangleIcon, Bars3Icon, FlagIcon, Squares2X2Icon, TicketIcon, UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import Logo from "./Logo";
@@ -7,7 +7,7 @@ const ADMIN_NAV = [
   { to: "/admin/dashboard", label: "Dashboard", icon: Squares2X2Icon },
   { to: "/admin/vouchers", label: "Vouchers", icon: TicketIcon },
   { to: "/admin/users", label: "Users", icon: UsersIcon },
-  { to: "/admin/reports", label: "Reports", icon: ClipboardDocumentCheckIcon },
+  { to: "/admin/reports", label: "Reports", icon: FlagIcon },
 ];
 
 export default function AdminLayout() {
