@@ -18,26 +18,29 @@ services:
       retries: 5
 
   bot:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: finot-bot
     restart: always
     depends_on:
       db:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
-      - BOT_TOKEN=${BOT_TOKEN}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DATABASE_URL=postgresql://${DB_USER:-finot_user}:${DB_PASSWORD:-password_finot}@db:5432/${DB_NAME:-finot_bot_db}
-      - TRAKTEER_API_KEY=${TRAKTEER_API_KEY}
-      - TRAKTEER_WEBHOOK_SECRET=${TRAKTEER_WEBHOOK_SECRET}
-      - TRAKTEER_PAGE_URL=${TRAKTEER_PAGE_URL}
-      - WEBHOOK_URL=${WEBHOOK_URL}
       - DEPLOYMENT_ENV=${DEPLOYMENT_ENV:-docker}
     ports:
       - "8000:8000"
     volumes:
       - ./uploads:/app/uploads
       - ./exports:/app/exports
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:

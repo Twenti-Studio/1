@@ -468,3 +468,458 @@ Format output JSON:
 Contoh deep_insight yang BAGUS:
 "Bulan ini cashflow kamu stabil dengan saving rate 22%. Namun terdapat lonjakan pengeluaran tidak rutin di minggu ke-3 sebesar Rp450.000. Jika pola saat ini konsisten, kamu berpotensi menabung Rp5.400.000 dalam 12 bulan ke depan. Prioritas berikutnya adalah meningkatkan dana darurat hingga 3x pengeluaran bulanan."
 """
+
+
+# ═══════════════════════════════════════════
+# NEW AI FEATURE PROMPTS (13 features)
+# ═══════════════════════════════════════════
+
+def build_anomaly_detection_prompt(
+    transaction_history: str, today_total: int, daily_avg: int
+) -> str:
+    """Prompt untuk Spending Anomaly Detection (#6)."""
+    return f"""Kamu adalah FiNot, AI financial watchdog. Deteksi pengeluaran TIDAK NORMAL hari ini.
+
+Data transaksi terkini:
+{transaction_history}
+
+Pengeluaran hari ini: Rp{today_total:,}
+Rata-rata pengeluaran harian: Rp{daily_avg:,}
+
+ATURAN:
+1. Bandingkan pengeluaran hari ini vs rata-rata harian
+2. Hitung berapa kali lipat dari rata-rata
+3. Identifikasi kategori terbesar yang menyumbang anomali
+4. Berikan saran yang spesifik
+5. Bahasa Indonesia santai, personal
+
+Format output JSON:
+{{
+  "is_anomaly": <true/false>,
+  "today_total": {today_total},
+  "daily_avg": {daily_avg},
+  "multiplier": <berapa kali lipat dari rata-rata>,
+  "top_category": "<kategori pengeluaran terbesar hari ini>",
+  "top_category_amount": <nominal>,
+  "explanation": "<penjelasan 2-3 kalimat, personal>"
+}}
+"""
+
+
+def build_burn_rate_prompt(transaction_history: str, current_balance: int) -> str:
+    """Prompt untuk Burn Rate Analysis (#7)."""
+    return f"""Kamu adalah FiNot, AI burn rate analyst. Hitung kecepatan uang user habis.
+
+Data transaksi (30 hari terakhir):
+{transaction_history}
+
+Saldo saat ini: Rp{current_balance:,}
+
+ATURAN:
+1. Hitung rata-rata pengeluaran harian (burn rate)
+2. Hitung berapa hari saldo bertahan
+3. Bandingkan burn rate minggu ini vs minggu lalu
+4. Berikan warning jika burn rate meningkat
+
+Format output JSON:
+{{
+  "daily_burn_rate": <rata-rata pengeluaran harian>,
+  "weekly_burn_rate": <rata-rata pengeluaran mingguan>,
+  "days_remaining": <hari saldo bertahan>,
+  "burn_trend": "<naik/turun/stabil>",
+  "burn_change_pct": <persentase perubahan>,
+  "explanation": "<penjelasan 2-3 kalimat>"
+}}
+"""
+
+
+def build_budget_suggestion_prompt(transaction_history: str) -> str:
+    """Prompt untuk Smart Budget Suggestion (#8)."""
+    return f"""Kamu adalah FiNot, AI budget planner. Buat rekomendasi budget per kategori berdasarkan pola belanja.
+
+Data transaksi (30 hari terakhir):
+{transaction_history}
+
+ATURAN:
+1. Analisis pengeluaran per kategori
+2. Sarankan batas budget yang REALISTIS (bukan terlalu ketat)
+3. Budget total harus <= 80% pemasukan (sisanya untuk tabungan)
+4. Prioritaskan kebutuhan > keinginan
+
+Format output JSON:
+{{
+  "total_income": <total pemasukan>,
+  "recommended_budgets": [
+    {{"category": "<nama>", "current_spending": <saat ini>, "suggested_budget": <saran>, "note": "<keterangan singkat>"}}
+  ],
+  "total_budget": <total budget yang disarankan>,
+  "saving_target": <target tabungan>,
+  "explanation": "<penjelasan 2-3 kalimat, personal>"
+}}
+"""
+
+
+def build_subscription_detector_prompt(transaction_history: str) -> str:
+    """Prompt untuk Subscription Detector (#9) — with upcoming alerts & summary."""
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    return f"""Kamu adalah FiNot, AI subscription detective. Deteksi langganan berulang dari riwayat transaksi dan berikan peringatan pembayaran yang akan datang.
+
+Tanggal hari ini: {today}
+
+Data transaksi (60 hari terakhir):
+{transaction_history}
+
+ATURAN:
+1. Cari transaksi dengan nominal SAMA atau MIRIP yang muncul BERULANG (bulanan/mingguan)
+2. Identifikasi dari catatan/kategori apakah itu langganan (Netflix, Spotify, gym, internet, dll)
+3. Hitung total biaya langganan per bulan
+4. Berdasarkan pola pembayaran, PREDIKSI kapan pembayaran berikutnya akan terjadi
+5. Jika ada pembayaran yang diperkirakan dalam 3 hari ke depan, tandai sebagai "upcoming"
+6. Sarankan mana yang bisa di-cancel jika perlu
+
+Format output JSON:
+{{
+  "subscriptions": [
+    {{
+      "name": "<nama langganan>",
+      "amount": <nominal>,
+      "frequency": "<bulanan/mingguan>",
+      "confidence": <0.0-1.0>,
+      "next_payment_date": "<YYYY-MM-DD perkiraan pembayaran berikutnya>",
+      "is_upcoming": <true jika dalam 3 hari ke depan>
+    }}
+  ],
+  "upcoming_alerts": [
+    {{
+      "name": "<nama langganan>",
+      "amount": <nominal>,
+      "days_until": <jumlah hari sampai pembayaran>,
+      "message": "<contoh: Besok ada pembayaran Netflix Rp54.000>"
+    }}
+  ],
+  "total_monthly": <total langganan per bulan>,
+  "total_yearly": <total langganan per tahun>,
+  "suggestion": "<saran 1-2 kalimat tentang optimasi langganan>"
+}}
+"""
+
+
+def build_goal_saving_prompt(
+    transaction_history: str, goal_text: str, current_balance: int
+) -> str:
+    """Prompt untuk Goal-based Saving (#11)."""
+    return f"""Kamu adalah FiNot, AI goal planner. User punya target tabungan. Bantu hitung dan buat rencana.
+
+Target user: "{goal_text}"
+Saldo saat ini: Rp{current_balance:,}
+
+Data transaksi (30 hari terakhir):
+{transaction_history}
+
+ATURAN:
+1. Parse target user (nama item + nominal target)
+2. Hitung berapa yang bisa ditabung per bulan dari pola saat ini
+3. Estimasi berapa bulan untuk mencapai target
+4. Berikan saran untuk mempercepat
+
+Format output JSON:
+{{
+  "goal_name": "<nama target>",
+  "goal_amount": <nominal target>,
+  "current_saving": {current_balance},
+  "monthly_saving_potential": <potensi tabungan per bulan>,
+  "months_needed": <estimasi bulan>,
+  "strategy": "<strategi 2-3 kalimat>",
+  "tips": ["<tip 1>", "<tip 2>"]
+}}
+"""
+
+
+def build_payday_planning_prompt(
+    transaction_history: str, income_amount: int
+) -> str:
+    """Prompt untuk Payday Planning (#12)."""
+    return f"""Kamu adalah FiNot, AI payday planner. User baru gajian. Bantu rencanakan alokasi.
+
+Pemasukan terakhir: Rp{income_amount:,}
+
+Pola pengeluaran (30 hari terakhir):
+{transaction_history}
+
+ATURAN:
+1. Analisis pola pengeluaran bulan lalu per kategori
+2. Buat alokasi yang REALISTIS berdasarkan kebiasaan
+3. Gunakan aturan 50/30/20 sebagai panduan (kebutuhan/keinginan/tabungan)
+4. Sesuaikan dengan pola actual user
+
+Format output JSON:
+{{
+  "income": {income_amount},
+  "allocations": [
+    {{"category": "<nama>", "amount": <nominal>, "percentage": <persen>, "type": "<kebutuhan/keinginan/tabungan>"}}
+  ],
+  "saving_amount": <total tabungan di rencana>,
+  "explanation": "<penjelasan 2-3 kalimat>"
+}}
+"""
+
+
+def build_overspending_alert_prompt(
+    transaction_history: str, category_data: str
+) -> str:
+    """Prompt untuk Category Overspending Alert (#13)."""
+    return f"""Kamu adalah FiNot, AI spending watchdog. Deteksi kategori yang BOROS — pengeluarannya lebih tinggi dari normal.
+
+Data kategori saat ini vs rata-rata:
+{category_data}
+
+Riwayat transaksi:
+{transaction_history}
+
+ATURAN:
+1. Bandingkan pengeluaran tiap kategori minggu ini vs rata-rata mingguan
+2. Kategori yang naik >20% → flagged sebagai overspending
+3. Berikan angka persen kenaikan
+4. Saran spesifik per kategori yang boros
+
+Format output JSON:
+{{
+  "alerts": [
+    {{"category": "<nama>", "current": <saat ini>, "average": <rata-rata>, "change_pct": <persen kenaikan>, "severity": "<warning/danger>"}}
+  ],
+  "total_overspend": <total kelebihan spending>,
+  "explanation": "<penjelasan 2-3 kalimat>"
+}}
+"""
+
+
+def build_weekend_pattern_prompt(transaction_history: str) -> str:
+    """Prompt untuk Weekend Spending Pattern (#14)."""
+    return f"""Kamu adalah FiNot, AI behavior analyst. Analisis pola pengeluaran akhir pekan vs hari kerja.
+
+Data transaksi (30 hari terakhir):
+{transaction_history}
+
+ATURAN:
+1. Pisahkan transaksi hari kerja (Senin-Jumat) vs weekend (Sabtu-Minggu)
+2. Hitung rata-rata per hari untuk masing-masing
+3. Bandingkan — berapa persen lebih tinggi (atau rendah) weekend
+4. Identifikasi kategori yang melonjak di weekend
+
+Format output JSON:
+{{
+  "weekday_daily_avg": <rata-rata harian hari kerja>,
+  "weekend_daily_avg": <rata-rata harian weekend>,
+  "difference_pct": <persen perbedaan>,
+  "weekend_top_categories": [
+    {{"category": "<nama>", "amount": <total weekend>}}
+  ],
+  "explanation": "<penjelasan 2-3 kalimat>"
+}}
+"""
+
+
+def build_expense_limit_prompt(
+    transaction_history: str, today_spent: int, suggested_limit: int
+) -> str:
+    """Prompt untuk Daily Expense Limit Reminder (#15)."""
+    return f"""Kamu adalah FiNot, AI expense tracker. Ingatkan user tentang batas pengeluaran harian.
+
+Batas harian yang disarankan: Rp{suggested_limit:,}
+Pengeluaran hari ini: Rp{today_spent:,}
+
+Riwayat pengeluaran:
+{transaction_history}
+
+ATURAN:
+1. Bandingkan pengeluaran hari ini vs batas
+2. Hitung sisa budget hari ini
+3. Jika sudah melebihi, berikan warning
+4. Berikan tip untuk sisa hari ini
+
+Format output JSON:
+{{
+  "daily_limit": {suggested_limit},
+  "today_spent": {today_spent},
+  "remaining": <sisa budget>,
+  "usage_pct": <persen penggunaan>,
+  "status": "<aman/warning/over>",
+  "tip": "<saran 1-2 kalimat>"
+}}
+"""
+
+
+def build_expense_prediction_prompt(transaction_history: str) -> str:
+    """Prompt untuk Expense Prediction (#16)."""
+    return f"""Kamu adalah FiNot, AI expense predictor. Prediksi total pengeluaran bulan ini berdasarkan pola saat ini.
+
+Data transaksi bulan ini sejauh ini:
+{transaction_history}
+
+ATURAN:
+1. Hitung rata-rata pengeluaran harian dari data bulan ini
+2. Proyeksikan ke sisa hari di bulan ini
+3. Bandingkan dengan bulan lalu jika memungkinkan
+4. Berikan confidence level
+
+Format output JSON:
+{{
+  "current_total": <total pengeluaran sejauh ini>,
+  "days_elapsed": <hari yang sudah lewat>,
+  "days_remaining": <sisa hari>,
+  "predicted_total": <prediksi total bulan ini>,
+  "daily_avg": <rata-rata harian>,
+  "confidence": <0.0-1.0>,
+  "explanation": "<penjelasan 2-3 kalimat>"
+}}
+"""
+
+
+def build_savings_opportunity_prompt(transaction_history: str) -> str:
+    """Prompt untuk Savings Opportunity Finder (#17)."""
+    return f"""Kamu adalah FiNot, AI savings hunter. Cari peluang penghematan dari pola pengeluaran user.
+
+Data transaksi (30 hari terakhir):
+{transaction_history}
+
+ATURAN:
+1. Identifikasi kategori yang bisa dikurangi tanpa banyak sacrifice
+2. Cari pengeluaran kecil berulang yang akumulasinya besar
+3. Hitung potensi penghematan per bulan dan per tahun
+4. Prioritaskan yang paling mudah dilakukan
+
+Format output JSON:
+{{
+  "opportunities": [
+    {{"category": "<nama>", "current_monthly": <saat ini>, "potential_saving": <potensi hemat>, "suggestion": "<saran spesifik>"}}
+  ],
+  "total_monthly_saving": <total potensi hemat per bulan>,
+  "total_yearly_saving": <total potensi hemat per tahun>,
+  "top_tip": "<tip paling impactful 1-2 kalimat>"
+}}
+"""
+
+
+def build_ai_chat_prompt(transaction_history: str, user_question: str) -> str:
+    """Prompt untuk AI Financial Chat (#18) — restricted to finance only."""
+    return f"""Kamu adalah FiNot, AI financial advisor personal. User bertanya langsung kepadamu tentang kondisi keuangan mereka.
+
+ATURAN WAJIB:
+1. HANYA jawab pertanyaan yang berkaitan dengan KEUANGAN, finansial, pengeluaran, pemasukan, tabungan, investasi, budgeting, atau fitur FiNot.
+2. Jika pertanyaan TIDAK terkait keuangan (misalnya: cuaca, resep masak, gosip, politik, coding, dll), TOLAK dengan sopan menggunakan format di bawah.
+3. Jawab berdasarkan DATA NYATA dari riwayat transaksi user, bukan teori umum.
+4. Gunakan angka spesifik dari riwayat transaksi.
+5. Bahasa Indonesia santai, personal, seperti financial advisor pribadi.
+6. Maksimal 5 kalimat untuk jawaban.
+
+Pertanyaan user: "{user_question}"
+
+Data keuangan user (30 hari terakhir):
+{transaction_history}
+
+Format output JSON:
+{{
+  "is_financial": true/false,
+  "answer": "<jawaban berdasarkan data nyata JIKA is_financial=true, ATAU pesan penolakan sopan JIKA is_financial=false>",
+  "data_used": "<ringkasan data yang digunakan, kosong jika bukan pertanyaan keuangan>",
+  "follow_up_tip": "<saran lanjutan 1 kalimat>"
+}}
+
+CONTOH PENOLAKAN (jika is_financial=false):
+{{
+  "is_financial": false,
+  "answer": "Maaf, saya FiNot — asisten keuangan pribadimu. Saya hanya bisa membantu soal keuangan, pengeluaran, tabungan, dan perencanaan finansial kamu. Coba tanya seputar kondisi keuanganmu ya! 😊",
+  "data_used": "",
+  "follow_up_tip": "Contoh pertanyaan: Kenapa uangku cepat habis bulan ini?"
+}}
+"""
+
+
+def build_weekly_strategy_prompt(transaction_history: str) -> str:
+    """Prompt untuk Weekly Strategy Suggestion (#20)."""
+    return f"""Kamu adalah FiNot, AI financial strategist. Berikan strategi keuangan untuk minggu depan berdasarkan data minggu ini.
+
+Data transaksi minggu ini:
+{transaction_history}
+
+ATURAN:
+1. Analisis tren minggu ini (spending pattern, kategori dominan)
+2. Identifikasi area yang bisa ditingkatkan minggu depan
+3. Berikan 1 strategi utama yang actionable
+4. Hitung potensi penghematan jika strategi diterapkan
+
+Format output JSON:
+{{
+  "this_week_expense": <total pengeluaran minggu ini>,
+  "this_week_income": <total pemasukan minggu ini>,
+  "dominant_category": "<kategori terbesar>",
+  "strategy": "<strategi utama 2-3 kalimat>",
+  "potential_saving": <potensi hemat>,
+  "action_items": ["<langkah 1>", "<langkah 2>"]
+}}
+"""
+
+
+def build_post_transaction_insight_prompt(
+    transaction_summary: str, last_tx_text: str
+) -> str:
+    """Prompt untuk auto-insight setelah transaksi dicatat."""
+    return f"""Kamu adalah FiNot, AI assistant. User baru saja mencatat transaksi. Berikan insight SINGKAT dan RELEVAN.
+
+Transaksi yang baru dicatat:
+{last_tx_text}
+
+Ringkasan transaksi hari ini:
+{transaction_summary}
+
+ATURAN:
+1. Insight harus SINGKAT (1-2 kalimat saja)
+2. Relevan dengan transaksi yang baru dicatat
+3. Bisa berupa: perbandingan dengan rata-rata, warning jika tinggi, pujian jika hemat
+4. Bahasa Indonesia santai
+
+Format output JSON:
+{{
+  "insight": "<insight singkat 1-2 kalimat>",
+  "emoji": "<1 emoji yang sesuai>"
+}}
+"""
+
+
+def build_forecast_3month_prompt(transaction_history: str, current_balance: int) -> str:
+    """Prompt untuk Forecast Keuangan 3 Bulan (#14 Elite)."""
+    return f"""Kamu adalah FiNot, AI senior financial forecaster. Buat proyeksi keuangan 3 bulan ke depan yang komprehensif.
+
+Data transaksi (90 hari terakhir):
+{transaction_history}
+
+Saldo saat ini: Rp{current_balance:,}
+
+ATURAN:
+1. Hitung rata-rata pemasukan dan pengeluaran bulanan dari data 3 bulan terakhir
+2. Proyeksikan saldo di akhir bulan 1, 2, dan 3
+3. Identifikasi tren — apakah pengeluaran naik/turun/stabil
+4. Prediksi risiko keuangan (kapan saldo bisa minus)
+5. Berikan skenario optimis dan pesimis
+6. Analisis ini harus terasa PREMIUM dan strategis
+
+Format output JSON:
+{{
+  "monthly_avg_income": <rata-rata pemasukan bulanan>,
+  "monthly_avg_expense": <rata-rata pengeluaran bulanan>,
+  "trend": "<naik/turun/stabil>",
+  "projections": [
+    {{"month": 1, "predicted_income": <angka>, "predicted_expense": <angka>, "predicted_balance": <angka>}},
+    {{"month": 2, "predicted_income": <angka>, "predicted_expense": <angka>, "predicted_balance": <angka>}},
+    {{"month": 3, "predicted_income": <angka>, "predicted_expense": <angka>, "predicted_balance": <angka>}}
+  ],
+  "risk_level": "<rendah/sedang/tinggi>",
+  "forecast": "<analisis forecast 3-4 kalimat, strategis dan personal>",
+  "insight": "<saran strategis 2-3 kalimat untuk 3 bulan ke depan>"
+}}
+
+Contoh forecast yang BAGUS:
+"Berdasarkan pola 3 bulan terakhir, pemasukan rata-rata Rp5.200.000/bulan dengan pengeluaran Rp3.800.000. Jika tren ini bertahan, saldo di akhir 3 bulan diproyeksikan Rp8.200.000. Namun ada kecenderungan pengeluaran naik 8% per bulan — jika tidak dikendalikan, surplus bisa menyusut hingga Rp900.000/bulan di bulan ke-3."
+"""

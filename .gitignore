@@ -8,4 +8,5 @@ backups/
 *.egg-info/
 dist/
 build/
+static/landing/
 .prisma/

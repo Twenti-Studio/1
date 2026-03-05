@@ -1,6 +1,7 @@
 """Service untuk operasi User."""
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from prisma import Prisma
@@ -16,26 +17,43 @@ async def get_or_create_user(
     display_name: Optional[str] = None,
     source: str = "telegram",
 ) -> User:
-    """Fungsi untuk mendapatkan atau membuat user baru."""
+    """Get or create user. New users start with 7-day trial (35 AI credits)."""
     _logger.debug(f"Getting or creating user: {user_id} from {source}")
 
     try:
         display_name_final = display_name or username or f"User-{user_id}"
 
-        user = await prisma.user.upsert(
-            where={"id": user_id},
+        # Check if user exists
+        existing = await prisma.user.find_unique(where={"id": user_id})
+
+        if existing:
+            _logger.info(f"User ready: {user_id} ({display_name_final}) plan={existing.plan}")
+            return existing
+
+        # New user → start with trial plan
+        trial_end = datetime.now(timezone.utc) + timedelta(days=7)
+
+        user = await prisma.user.create(
             data={
-                "create": {
-                    "id": user_id,
-                    "username": username,
-                    "displayName": display_name_final,
-                    "plan": "free",
-                },
-                "update": {},
+                "id": user_id,
+                "username": username,
+                "displayName": display_name_final,
+                "plan": "trial",
+                "trialEndsAt": trial_end,
             },
         )
 
-        _logger.info(f"User ready: {user_id} ({display_name_final}) plan={user.plan}")
+        # Create initial trial AI credits (35 total, non-refilling)
+        await prisma.aicredit.create(
+            data={
+                "userId": user_id,
+                "totalCredits": 35,
+                "usedCredits": 0,
+                "weekStartAt": datetime.now(timezone.utc),
+            }
+        )
+
+        _logger.info(f"New trial user created: {user_id} ({display_name_final}), trial ends {trial_end.date()}")
         return user
 
     except Exception as e:

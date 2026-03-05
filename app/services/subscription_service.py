@@ -23,12 +23,25 @@ def _utcnow():
 async def get_user_plan(user_id: int) -> str:
     """
     Get current active plan for user.
-    Checks subscription validity and downgrades if expired.
+    Checks trial expiry, subscription validity, and downgrades if expired.
     """
     try:
         user = await prisma.user.find_unique(where={"id": user_id})
         if not user:
             return "free"
+
+        # Trial plan — check expiry
+        if user.plan == "trial":
+            if user.trialEndsAt and user.trialEndsAt > _utcnow():
+                return "trial"
+            else:
+                # Trial expired → downgrade to free
+                _logger.info(f"User {user_id} trial expired, downgrading to free")
+                await prisma.user.update(
+                    where={"id": user_id},
+                    data={"plan": "free"},
+                )
+                return "free"
 
         if user.plan in ("pro", "elite"):
             # Check if subscription is still active
@@ -65,8 +78,8 @@ async def get_user_plan(user_id: int) -> str:
 async def check_ai_credits(user_id: int) -> Dict:
     """
     Check remaining AI credits for user.
-    Free: 5 credits/month.
-    Pro/Elite: weekly credits refill.
+    Trial: fixed 35 credits total (no refill).
+    Free/Pro/Elite: weekly refill cycle.
     """
     try:
         plan = await get_user_plan(user_id)
@@ -74,35 +87,45 @@ async def check_ai_credits(user_id: int) -> Dict:
         
         now = _utcnow()
         
-        if plan == "free":
-            # Monthly refill for Free
-            period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            limit = plan_config.get("ai_credits_monthly", 5)
+        if plan == "trial":
+            # Trial uses fixed total credits (created at signup)
+            credit = await prisma.aicredit.find_first(
+                where={"userId": user_id},
+                order={"createdAt": "asc"},  # get the original trial credit
+            )
+            if not credit:
+                # Fallback: create one
+                credit = await prisma.aicredit.create(
+                    data={
+                        "userId": user_id,
+                        "totalCredits": plan_config.get("ai_credits_total", 35),
+                        "usedCredits": 0,
+                        "weekStartAt": now,
+                    }
+                )
         else:
-            # Weekly refill for Pro/Elite
+            # Free/Pro/Elite use weekly refill
             period_start = now - timedelta(days=now.weekday())
             period_start = period_start.replace(hour=0, minute=0, second=0, microsecond=0)
-            limit = plan_config.get("ai_credits_weekly", 50)
+            limit = plan_config.get("ai_credits_weekly", 5)
 
-        # Find credit record for this period
-        credit = await prisma.aicredit.find_first(
-            where={
-                "userId": user_id,
-                "weekStartAt": {"gte": period_start},
-            },
-            order={"createdAt": "desc"},
-        )
-
-        if not credit:
-            # Create new credit record for this period
-            credit = await prisma.aicredit.create(
-                data={
+            credit = await prisma.aicredit.find_first(
+                where={
                     "userId": user_id,
-                    "totalCredits": limit,
-                    "usedCredits": 0,
-                    "weekStartAt": period_start,
-                }
+                    "weekStartAt": {"gte": period_start},
+                },
+                order={"createdAt": "desc"},
             )
+
+            if not credit:
+                credit = await prisma.aicredit.create(
+                    data={
+                        "userId": user_id,
+                        "totalCredits": limit,
+                        "usedCredits": 0,
+                        "weekStartAt": period_start,
+                    }
+                )
 
         remaining = credit.totalCredits - credit.usedCredits
         return {
@@ -110,7 +133,7 @@ async def check_ai_credits(user_id: int) -> Dict:
             "remaining": max(0, remaining),
             "total": credit.totalCredits,
             "plan": plan,
-            "period": "monthly" if plan == "free" else "weekly"
+            "period": "trial" if plan == "trial" else "weekly",
         }
 
     except Exception as e:
@@ -137,16 +160,11 @@ async def consume_ai_credit(user_id: int, amount: int = 1) -> bool:
             )
             return False
 
-        plan = credit_info["plan"]
         now = _utcnow()
 
-        if plan == "free":
-            # Month start
-            period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        else:
-            # Week start
-            period_start = now - timedelta(days=now.weekday())
-            period_start = period_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        # All plans use weekly period
+        period_start = now - timedelta(days=now.weekday())
+        period_start = period_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
         credit = await prisma.aicredit.find_first(
             where={
@@ -166,7 +184,7 @@ async def consume_ai_credit(user_id: int, amount: int = 1) -> bool:
                 data={"usedCredits": credit.usedCredits + amount},
             )
             _logger.info(
-                f"AI credit consumed for user {user_id} ({plan}, amount={amount}): "
+                f"AI credit consumed for user {user_id} ({credit_info['plan']}, amount={amount}): "
                 f"{credit.usedCredits + amount}/{credit.totalCredits}"
             )
             return True

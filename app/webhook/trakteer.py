@@ -42,11 +42,35 @@ async def trakteer_webhook(request: Request):
             user_id = result["user_id"]
             plan = result.get("plan", "pro")
 
+            # Get dashboard URL
+            import os
+            webhook_url = os.getenv("WEBHOOK_URL", "")
+            dashboard_url = webhook_url.rstrip("/") if webhook_url else ""
+
+            # Get user's web login info
+            from app.db.connection import prisma as db
+            user = await db.user.find_unique(where={"id": user_id})
+            login_info = ""
+            if user and user.webLogin:
+                login_info = (
+                    f"\n\n<b>📊 Dashboard Web:</b>\n"
+                    f"Link: {dashboard_url}\n"
+                    f"Username: <code>{user.webLogin}</code>\n"
+                    f"Gunakan password yang sudah kamu buat."
+                )
+            elif dashboard_url:
+                login_info = (
+                    f"\n\n<b>📊 Dashboard Web:</b>\n"
+                    f"Link: {dashboard_url}\n"
+                    f"Daftarkan akun web di dashboard untuk akses full!"
+                )
+
             message = (
                 f"<b>Pembayaran Berhasil!</b>\n\n"
                 f"🎉 Selamat! Kamu sekarang pengguna <b>{plan.upper()}</b>!\n\n"
                 f"Fitur premium sudah aktif. Ketik /status untuk cek detail.\n\n"
                 f"Terima kasih sudah mendukung FiNot! 🙏"
+                f"{login_info}"
             )
 
             try:

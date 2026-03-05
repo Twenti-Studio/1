@@ -4,11 +4,14 @@ Payment Service (Trakteer QRIS)
 Handles payment order creation, webhook processing, and status checking.
 """
 
-import logging
-import uuid
 import hashlib
 import hmac
+import logging
 import re
+import secrets
+import string
+import time
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
@@ -19,6 +22,53 @@ from app.config import TRAKTEER_API_KEY, TRAKTEER_WEBHOOK_SECRET, PLAN_CONFIG
 
 _logger = logging.getLogger(__name__)
 
+# ── Temporary credential store (payment_id → creds, auto-cleared after 30min) ──
+WEB_CREDENTIALS_CACHE: Dict[int, Dict] = {}
+
+
+def _generate_readable_login(name: str) -> str:
+    """Generate a readable web login from a name, e.g. 'Andi Pratama' → 'andi.pratama'."""
+    clean = re.sub(r"[^a-z0-9\s]", "", name.lower().strip())
+    parts = clean.split()
+    if len(parts) >= 2:
+        login = f"{parts[0]}.{parts[1]}"
+    elif parts:
+        login = parts[0]
+    else:
+        login = "user"
+    if len(login) < 3:
+        login = "user." + login
+    return login
+
+
+def _generate_password(length: int = 10) -> str:
+    chars = string.ascii_letters + string.digits
+    return "".join(secrets.choice(chars) for _ in range(length))
+
+
+def _hash_pw(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def _cache_credentials(payment_id: int, web_login: str, password: str):
+    """Cache credentials for retrieval by frontend poll."""
+    WEB_CREDENTIALS_CACHE[payment_id] = {
+        "web_login": web_login,
+        "password": password,
+        "ts": time.time(),
+    }
+    # Cleanup entries older than 30 min
+    now = time.time()
+    for pid in list(WEB_CREDENTIALS_CACHE.keys()):
+        if now - WEB_CREDENTIALS_CACHE[pid]["ts"] > 1800:
+            del WEB_CREDENTIALS_CACHE[pid]
+
+
+def get_cached_credentials(payment_id: int) -> Optional[Dict]:
+    cred = WEB_CREDENTIALS_CACHE.get(payment_id)
+    if cred:
+        return {"web_login": cred["web_login"], "password": cred["password"]}
+    return None
 
 async def create_payment_order(
     user_id: int,
@@ -168,6 +218,27 @@ async def handle_trakteer_webhook(payload: Dict) -> Dict:
             duration_days=30,
         )
 
+        # ── Auto-create web credentials ──
+        user = await prisma.user.find_unique(where={"id": payment.userId})
+        web_login = None
+        plain_pw = None
+        if user and not user.webLogin:
+            base_login = _generate_readable_login(user.displayName or "user")
+            web_login = base_login
+            counter = 1
+            while await prisma.user.find_first(where={"webLogin": web_login}):
+                web_login = f"{base_login}{counter}"
+                counter += 1
+            plain_pw = _generate_password()
+            await prisma.user.update(
+                where={"id": payment.userId},
+                data={"webLogin": web_login, "webPassword": _hash_pw(plain_pw)},
+            )
+            _cache_credentials(payment.id, web_login, plain_pw)
+            _logger.info(f"Web account created for user {payment.userId}: {web_login}")
+        elif user and user.webLogin:
+            web_login = user.webLogin
+
         _logger.info(
             f"Payment confirmed and subscription activated: "
             f"user={payment.userId}, plan={payment.plan}, payment_id={payment.id}"
@@ -178,6 +249,7 @@ async def handle_trakteer_webhook(payload: Dict) -> Dict:
             "user_id": payment.userId,
             "plan": payment.plan,
             "subscription": sub_result,
+            "web_login": web_login,
         }
 
     except Exception as e:
@@ -210,7 +282,7 @@ async def check_payment_status(payment_id: int) -> Dict:
                 "message": "Pembayaran telah kedaluwarsa",
             }
 
-        return {
+        result = {
             "found": True,
             "payment_id": payment.id,
             "status": payment.status,
@@ -218,6 +290,14 @@ async def check_payment_status(payment_id: int) -> Dict:
             "amount": payment.amount,
             "created_at": payment.createdAt.isoformat(),
         }
+
+        # Attach cached credentials if payment is paid
+        if payment.status == "paid":
+            creds = get_cached_credentials(payment.id)
+            if creds:
+                result["credentials"] = creds
+
+        return result
 
     except Exception as e:
         _logger.error(f"Error checking payment status: {e}", exc_info=True)

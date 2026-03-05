@@ -262,16 +262,22 @@ def format_subscription_status(status: dict) -> str:
     credits = status.get("credits", {})
 
     lines = [
-        "Status Akun FiNot",
+        "📋 Status Akun FiNot",
         "━━━━━━━━━━━━━━━━━━━━━━━━",
         f"Plan: <b>{plan_name}</b>",
-        f"Sisa AI Credit: <b>{credits.get('remaining', 0)}/{credits.get('total', 0)}</b>",
+        f"Sisa AI Credit: <b>{credits.get('remaining', 0)}/{credits.get('total', 0)}</b> (minggu ini)",
     ]
 
     sub = status.get("subscription")
     if sub:
         lines.append(f"Berakhir: {sub.get('end_date', '-')[:10]}")
         lines.append(f"Sisa hari: {sub.get('days_left', 0)} hari")
+
+    # Dashboard link for all users
+    dashboard_url = os.getenv("WEBHOOK_URL", "").rstrip("/")
+    if dashboard_url:
+        lines.append("")
+        lines.append(f"📊 Dashboard: {dashboard_url}")
 
     if plan == "free":
         lines.append("")
@@ -283,50 +289,48 @@ def format_subscription_status(status: dict) -> str:
 
 def format_upgrade_menu() -> str:
     """Format upgrade plan menu with details."""
-    lines = [
-        "<b>Upgrade FiNot Premium</b>",
-        "━━━━━━━━━━━━━━━━━━━━━━━━",
-        "",
-    ]
-
-    # Free plan
-    lines.append("<b>FREE PLAN</b> (Saat Ini)")
-    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-    lines.append("Harga: <b>Gratis</b>")
-    lines.append("5 AI credit total (tanpa refill)")
-    for feat in PLAN_CONFIG['free']['features']:
-        lines.append(f"  • {feat}")
-    lines.append("")
-
-    # Pro plan
-    lines.append("<b>PAKET PRO</b>")
-    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
     pro = PLAN_CONFIG['pro']
-    lines.append(f"Harga: <b>Rp {pro['price']:,}</b>")
-    lines.append(f"Durasi: <b>{pro['duration_days']} Hari</b>")
-    lines.append(f"{pro['ai_credits_weekly']} AI credit/minggu")
-    lines.append(f"~Rp {pro['price']//pro['duration_days']:,}/hari")
-    for feat in pro['features']:
-        lines.append(f"  • {feat}")
-    lines.append("")
-
-    # Elite plan
-    lines.append("<b>PAKET ELITE</b>")
-    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
     elite = PLAN_CONFIG['elite']
-    lines.append(f"Harga: <b>Rp {elite['price']:,}</b>")
-    lines.append(f"Durasi: <b>{elite['duration_days']} Hari</b>")
-    lines.append(f"{elite['ai_credits_weekly']} AI credit/minggu")
-    lines.append(f" ~Rp {elite['price']//elite['duration_days']:,}/hari")
-    for feat in elite['features']:
-        lines.append(f"  • {feat}")
-    lines.append("")
 
-    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-    lines.append("Pembayaran aman via QRIS (Trakteer)")
-    lines.append("Aktivasi otomatis setelah konfirmasi")
-
-    return "\n".join(lines)
+    return (
+        "<b>💎 Upgrade FiNot Premium</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        #
+        "🆓 <b>FREE PLAN</b> (Saat Ini)\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "5 AI credit/minggu\n"
+        "• Catat transaksi unlimited\n"
+        "• Scan struk & voice note\n"
+        "• 5 fitur AI dasar (1 credit/fitur)\n\n"
+        #
+        f"🥈 <b>PAKET PRO</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Harga: <b>Rp{pro['price']:,}/bulan</b> (~Rp{pro['price']//30:,}/hari)\n"
+        f"50 AI credit/minggu\n"
+        f"• Semua fitur Free +\n"
+        f"• Weekly Summary otomatis (3 credit)\n"
+        f"• Rekomendasi tabungan (2 credit)\n"
+        f"• Smart Budget & Goal-based Saving\n"
+        f"• Prediksi pengeluaran bulanan\n"
+        f"• Subscription detector\n"
+        f"• Overspending alert\n\n"
+        #
+        f"🥇 <b>PAKET ELITE</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Harga: <b>Rp{elite['price']:,}/bulan</b> (~Rp{elite['price']//30:,}/hari)\n"
+        f"150 AI credit/minggu\n"
+        f"• Semua fitur Pro +\n"
+        f"• Monthly deep analysis (5 credit)\n"
+        f"• Forecast 3 bulan (4 credit)\n"
+        f"• Advanced habit tracking (4 credit)\n"
+        f"• AI Finance Chat (3 credit)\n"
+        f"• Weekly strategy & Payday planning\n"
+        f"• Priority AI processing\n\n"
+        #
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "Pembayaran aman via QRIS (Trakteer)\n"
+        "Aktivasi otomatis setelah konfirmasi"
+    )
 
 
 def format_help_message() -> str:
@@ -334,38 +338,46 @@ def format_help_message() -> str:
     return """<b>FiNot - AI Financial Assistant</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-Halo! Saya FiNot, asisten keuangan pribadimu yang cerdas! 
+Halo! Saya FiNot, asisten keuangan pribadimu yang cerdas! 🧠
 
-<b>Catat Transaksi</b>
+<b>📝 Catat Transaksi</b>
 Kirim pesan seperti:
 • "beli makan 25rb"
 • "gajian 5jt"
-• "ongkos ojol 15rb dan makan siang 30rb"
+📸 Kirim foto struk → auto input!
+🎙️ Kirim voice note → auto transkrip!
 
-<b>Scan Struk</b>
-Kirim foto struk/receipt → auto input!
+<b>🆓 Fitur AI Gratis (1 credit):</b>
+/insight - Insight harian
+/predict - Prediksi umur saldo
+/burnrate - Burn rate analysis
+/health - Skor kesehatan keuangan
+/alert - Spending alert
 
-<b>Pesan Suara</b>
-Kirim voice note → auto transkrip & catat!
+<b>🥈 Fitur Pro (2-3 credit):</b>
+/analysis weekly - Ringkasan mingguan
+/saving - Rekomendasi tabungan
+/budget - Saran budget per kategori
+/goal [target] - Target tabungan
+/prediction - Prediksi pengeluaran bulanan
+/detect - Deteksi langganan berulang
+/overspend - Alert kategori boros
 
-<b>Fitur AI:</b>
-/insight - Insight harian 
-/predict [saldo] - Prediksi umur saldo 
-/saving - Rekomendasi tabungan 
-/health - Skor kesehatan keuangan 
-/simulate [nominal] - Simulasi hemat 
-/analysis - Analisis mingguan/bulanan
+<b>🥇 Fitur Elite (3-5 credit):</b>
+/analysis monthly - Analisis bulanan mendalam
+/forecast - Forecast keuangan 3 bulan
+/weekend - Advanced habit tracking
+/chat [pertanyaan] - AI Finance Chat
+/strategy - Strategi minggu depan
+/payday - Perencanaan gaji
 
-<b>Data & Laporan:</b>
+<b>📁 Data & Laporan:</b>
 /history - Riwayat transaksi
 /export - Download Excel
 /status - Status akun & kredit
 
-<b>Premium:</b>
+<b>💎 Premium:</b>
 /upgrade - Lihat paket premium
-/buy [plan] - Beli paket (QRIS)
-
-<b>Lainnya:</b>
 /help - Tampilkan bantuan ini
 """
 
@@ -374,44 +386,50 @@ Kirim voice note → auto transkrip & catat!
 # RBAC MIDDLEWARE
 # ═══════════════════════════════════════════
 
-async def check_credits_and_consume(user_id: int, feature: str = None, amount: int = 1) -> dict:
+async def check_credits_and_consume(user_id: int, feature: str = None, amount: int = None) -> dict:
     """
     Check and consume AI credit before processing.
+    If amount is None, auto-lookup from FEATURE_CREDIT_COST.
     Returns {"allowed": True/False, "message": str}
     """
+    from app.config import FEATURE_CREDIT_COST
+
     plan = await get_user_plan(user_id)
 
     # Check feature access if specified
     if feature and not check_feature_access(plan, feature):
+        # Determine required plan
+        required = "Pro"
+        elite_features = ["monthly_analysis", "forecast_3month", "advanced_tracking",
+                          "ai_chat", "weekly_strategy", "payday_planning"]
+        if feature in elite_features:
+            required = "Elite"
+
         return {
             "allowed": False,
             "message": (
-                f"Fitur ini hanya tersedia untuk paket premium.\n"
+                f"⚠️ Fitur ini memerlukan paket <b>{required}</b>.\n"
+                f"Paket kamu: <b>{plan.upper()}</b>\n\n"
                 f"Ketik /upgrade untuk lihat paket!"
             ),
         }
 
+    # Auto-lookup credit cost from config
+    if amount is None:
+        amount = FEATURE_CREDIT_COST.get(feature, 1) if feature else 1
+
     # Check and consume credit
     credits = await check_ai_credits(user_id)
     if credits["remaining"] < amount:
-        if plan == "free":
-            return {
-                "allowed": False,
-                "message": (
-                    f"AI credit kamu tidak cukup (Butuh {amount}, Sisa {credits['remaining']}/5).\n\n"
-                    "Kredit Free Plan (5/bulan) akan di-reset setiap awal bulan.\n"
-                    "Upgrade ke Pro untuk 50 credit/minggu! \n"
-                ),
-            }
-        else:
-            return {
-                "allowed": False,
-                "message": (
-                    f"Kredit AI tidak cukup.\n"
-                    f"Butuh: {amount} Sisa: {credits['remaining']}/{credits['total']}\n"
-                    f"Kredit akan di-reset setiap hari Senin."
-                ),
-            }
+        return {
+            "allowed": False,
+            "message": (
+                f"⚠️ Kredit AI tidak cukup.\n"
+                f"Butuh: <b>{amount}</b> | Sisa: <b>{credits['remaining']}/{credits['total']}</b>\n\n"
+                f"Kredit di-reset setiap hari Senin.\n"
+                f"Ketik /upgrade untuk tambah kuota!"
+            ),
+        }
 
     consumed = await consume_ai_credit(user_id, amount=amount)
     if not consumed:
@@ -420,7 +438,7 @@ async def check_credits_and_consume(user_id: int, feature: str = None, amount: i
             "message": "Gagal menggunakan kredit AI. Coba lagi.",
         }
 
-    return {"allowed": True, "credits_remaining": credits["remaining"] - amount}
+    return {"allowed": True, "credits_remaining": credits["remaining"] - amount, "cost": amount}
 
 
 # ═══════════════════════════════════════════
@@ -556,23 +574,78 @@ async def _handle_command(chat_id: int, user_id: int, text: str):
     elif command == "/export":
         await _handle_export_command(chat_id, user_id, args)
 
+    # ── Free AI Features (1 credit) ──
     elif command == "/insight":
         await _handle_insight_command(chat_id, user_id)
 
     elif command == "/predict":
         await _handle_predict_command(chat_id, user_id, args)
 
-    elif command == "/saving":
-        await _handle_saving_command(chat_id, user_id)
+    elif command == "/burnrate":
+        await _handle_burnrate_command(chat_id, user_id)
 
     elif command == "/health":
         await _handle_health_command(chat_id, user_id)
 
+    elif command in ("/alert", "/anomaly"):
+        await _handle_anomaly_command(chat_id, user_id)
+
+    # ── Pro AI Features (2-3 credit) ──
+    elif command == "/analysis":
+        await _handle_analysis_command(chat_id, user_id, args)
+
+    elif command == "/saving":
+        await _handle_saving_command(chat_id, user_id)
+
+    elif command == "/budget":
+        await _handle_budget_command(chat_id, user_id)
+
+    elif command == "/goal":
+        await _handle_goal_command(chat_id, user_id, args)
+
+    elif command == "/prediction":
+        await _handle_expense_prediction_command(chat_id, user_id)
+
+    elif command == "/detect":
+        await _handle_detect_command(chat_id, user_id)
+
+    elif command == "/overspend":
+        await _handle_overspend_command(chat_id, user_id)
+
     elif command == "/simulate":
         await _handle_simulate_command(chat_id, user_id, args)
 
-    elif command == "/analysis":
-        await _handle_analysis_command(chat_id, user_id, args)
+    # ── Elite AI Features (3-5 credit) ──
+    elif command == "/forecast":
+        await _handle_forecast_command(chat_id, user_id)
+
+    elif command == "/weekend":
+        await _handle_weekend_command(chat_id, user_id)
+
+    elif command == "/chat":
+        await _handle_chat_command(chat_id, user_id, args)
+
+    elif command == "/strategy":
+        await _handle_strategy_command(chat_id, user_id)
+
+    elif command == "/payday":
+        await _handle_payday_command(chat_id, user_id)
+
+    elif command in ("/report", "/lapor"):
+        dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/webhook/telegram").rstrip("/")
+        await send_telegram_message(
+            chat_id,
+            f"📝 <b>Fitur Report</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"Untuk mengirim laporan bug, saran fitur, atau keluhan, "
+            f"silakan gunakan fitur Report di dashboard:\n\n"
+            f"🔗 <b>{dashboard_url}/dashboard/report</b>\n\n"
+            f"Di sana kamu bisa:\n"
+            f"• Tulis laporan dengan subjek & detail\n"
+            f"• Pilih kategori (Bug, Fitur, Keluhan)\n"
+            f"• Lihat status & balasan dari tim kami\n\n"
+            f"💡 Ketik /help untuk bantuan lainnya.",
+        )
 
     else:
         await send_telegram_message(
@@ -800,11 +873,14 @@ async def _cb_check_payment_status(
         status = result["status"]
 
         if status == "paid":
+            dashboard_url = os.getenv("WEBHOOK_URL", "").rstrip("/")
             text = (
                 "<b>Pembayaran Berhasil!</b>\n\n"
                 f"🎉 Paket <b>{result.get('plan', '').upper()}</b> sudah aktif!\n"
                 "Ketik /status untuk melihat detail langganan."
             )
+            if dashboard_url:
+                text += f"\n\n📊 Dashboard Web: {dashboard_url}"
             await send_telegram_message(chat_id, text)
 
         elif status == "expired":
@@ -979,7 +1055,7 @@ async def _handle_insight_command(chat_id: int, user_id: int):
 
 async def _handle_predict_command(chat_id: int, user_id: int, args: list):
     """Handle /predict - Balance Prediction (auto-calculates balance)."""
-    access = await check_credits_and_consume(user_id)
+    access = await check_credits_and_consume(user_id, feature="balance_prediction")
     if not access["allowed"]:
         await send_telegram_message(chat_id, access["message"])
         return
@@ -1056,7 +1132,7 @@ async def _handle_saving_command(chat_id: int, user_id: int):
 
 async def _handle_health_command(chat_id: int, user_id: int):
     """Handle /health - Financial Health Score."""
-    access = await check_credits_and_consume(user_id)
+    access = await check_credits_and_consume(user_id, feature="health_score")
     if not access["allowed"]:
         await send_telegram_message(chat_id, access["message"])
         return
@@ -1151,7 +1227,7 @@ async def _handle_analysis_command(chat_id: int, user_id: int, args: list):
 
     if period == "monthly":
         # Monthly is Elite only
-        access = await check_credits_and_consume(user_id, feature="monthly_analysis", amount=5)
+        access = await check_credits_and_consume(user_id, feature="monthly_analysis")
         if not access["allowed"]:
             await send_telegram_message(chat_id, access["message"])
             return
@@ -1187,7 +1263,7 @@ async def _handle_analysis_command(chat_id: int, user_id: int, args: list):
 
     else:
         # Weekly is Pro+
-        access = await check_credits_and_consume(user_id, feature="weekly_summary", amount=3)
+        access = await check_credits_and_consume(user_id, feature="weekly_summary")
         if not access["allowed"]:
             await send_telegram_message(chat_id, access["message"])
             return
@@ -1219,6 +1295,624 @@ async def _handle_analysis_command(chat_id: int, user_id: int, args: list):
         except Exception as e:
             logger.error(f"Error in weekly analysis: {e}", exc_info=True)
             await send_telegram_message(chat_id, "Gagal menganalisis.")
+
+
+# ═══════════════════════════════════════════
+# AI FEATURE COMMAND HANDLERS
+# ═══════════════════════════════════════════
+
+async def _handle_forecast_command(chat_id: int, user_id: int):
+    """#14 Forecast Keuangan 3 Bulan (Elite)."""
+    access = await check_credits_and_consume(user_id, feature="forecast_3month")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_balance_prediction
+
+        await send_telegram_message(chat_id, "🔮 Membuat forecast 3 bulan ke depan...")
+        result = await get_balance_prediction(user_id, forecast_months=3)
+
+        if result.get("success"):
+            data = result["data"]
+
+            message = (
+                f"🔮 <b>Forecast Keuangan 3 Bulan</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            )
+
+            if data.get("forecast"):
+                message += f"{data['forecast']}\n\n"
+
+            if data.get("insight"):
+                message += f"💡 {data['insight']}"
+        else:
+            message = "Belum cukup data untuk forecast. Catat transaksi minimal 2 minggu."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in forecast: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal membuat forecast.")
+
+
+async def _handle_anomaly_command(chat_id: int, user_id: int):
+    """#5 Spending Alert / Anomaly Detection."""
+    access = await check_credits_and_consume(user_id, feature="spending_alert")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_anomaly_detection
+
+        await send_telegram_message(chat_id, "⚠️ Menganalisis pola pengeluaran...")
+        result = await get_anomaly_detection(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+            is_anomaly = data.get("is_anomaly", False)
+            emoji = "⚠️" if is_anomaly else "✅"
+
+            message = (
+                f"{emoji} <b>Deteksi Pengeluaran</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Pengeluaran hari ini: <b>Rp{data.get('today_total', 0):,}</b>\n"
+                f"Rata-rata harian: <b>Rp{data.get('daily_avg', 0):,}</b>\n"
+                f"Rasio: <b>{data.get('ratio', 0):.1f}×</b> rata-rata\n\n"
+            )
+
+            if is_anomaly:
+                message += f"⚠️ {data.get('alert_message', 'Pengeluaran lebih tinggi dari biasanya.')}\n\n"
+
+            # Top categories
+            top_cats = data.get("top_categories", [])
+            if top_cats:
+                message += "Kategori terbesar:\n"
+                for cat in top_cats[:3]:
+                    message += f"• {cat.get('category', '?')} — Rp{cat.get('amount', 0):,}\n"
+                message += "\n"
+
+            if data.get("suggestion"):
+                message += f"💡 {data['suggestion']}"
+        else:
+            message = "Belum cukup data. Catat transaksi dulu minimal beberapa hari."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in anomaly: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal menganalisis.")
+
+
+async def _handle_burnrate_command(chat_id: int, user_id: int):
+    """#7 Burn Rate Analysis."""
+    access = await check_credits_and_consume(user_id, feature="burn_rate")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_burn_rate
+
+        await send_telegram_message(chat_id, "🔥 Menghitung burn rate...")
+        result = await get_burn_rate(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+            balance = result.get("balance", 0)
+
+            message = (
+                f"🔥 <b>Burn Rate</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Saldo saat ini: <b>Rp{balance:,}</b>\n"
+                f"Rata-rata pengeluaran/hari: <b>Rp{data.get('daily_burn_rate', 0):,}</b>\n"
+                f"Estimasi saldo habis: <b>{data.get('days_until_zero', 0)} hari</b>\n\n"
+            )
+
+            if data.get("insight"):
+                message += f"💡 {data['insight']}"
+        else:
+            message = "Belum cukup data untuk analisis burn rate."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in burn rate: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal menganalisis.")
+
+
+async def _handle_budget_command(chat_id: int, user_id: int):
+    """#8 Smart Budget Suggestion."""
+    access = await check_credits_and_consume(user_id, feature="budget_suggestion")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_budget_suggestion
+
+        await send_telegram_message(chat_id, "📊 Merekomendasikan budget...")
+        result = await get_budget_suggestion(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+
+            message = (
+                f"📊 <b>Budget Rekomendasi</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Berdasarkan pola belanja:\n\n"
+            )
+
+            budgets = data.get("budgets", [])
+            for b in budgets:
+                message += f"• {b.get('category', '?')} → Rp{b.get('amount', 0):,}/bulan\n"
+
+            if data.get("total_budget"):
+                message += f"\nTotal Budget: <b>Rp{data['total_budget']:,}/bulan</b>\n"
+
+            if data.get("suggestion"):
+                message += f"\n💡 {data['suggestion']}"
+        else:
+            message = "Belum cukup data untuk rekomendasi budget."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in budget: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal menganalisis.")
+
+
+async def _handle_detect_command(chat_id: int, user_id: int):
+    """#9 Subscription Detector with upcoming alerts & summary."""
+    access = await check_credits_and_consume(user_id, feature="subscription_detector")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_subscription_detector
+
+        await send_telegram_message(chat_id, "🔁 Mendeteksi langganan berulang...")
+        result = await get_subscription_detector(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+
+            subscriptions = data.get("subscriptions", [])
+            upcoming = data.get("upcoming_alerts", [])
+
+            if not subscriptions:
+                message = "🔁 Tidak ada langganan berulang yang terdeteksi dari transaksimu."
+                await send_telegram_message(chat_id, message)
+                return
+
+            parts = []
+
+            # Upcoming payment alerts (like the screenshot)
+            if upcoming:
+                parts.append("<b>Subscription Alert</b>")
+                parts.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+                parts.append("")
+                
+                # Get current balance for context
+                from worker.analysis_service import _get_balance
+                balance = await _get_balance(user_id)
+                
+                for alert in upcoming:
+                    alert_msg = alert.get("message", "")
+                    if not alert_msg:
+                        name = alert.get("name", "?")
+                        amt = alert.get("amount", 0)
+                        alert_msg = f"Pembayaran {name} Rp{amt:,}"
+                    parts.append(f"⚠️ {alert_msg}")
+                
+                parts.append("")
+                parts.append(f"Saldo saat ini: <b>Rp{balance:,}</b>")
+                parts.append("")
+
+            # Subscription summary
+            total_monthly = data.get("total_monthly", 0)
+            if total_monthly == 0:
+                total_monthly = sum(s.get("amount", 0) for s in subscriptions)
+
+            parts.append("<b>Subscription Summary</b>")
+            parts.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+            parts.append("")
+
+            for sub in subscriptions:
+                amount = sub.get("amount", 0)
+                freq = sub.get("frequency", "bulanan")
+                parts.append(f"• {sub.get('name', '?')} — Rp{amount:,}/{freq}")
+
+            parts.append("")
+            parts.append(f"📊 Total subscription bulan ini: <b>Rp{total_monthly:,}</b>")
+
+            if data.get("suggestion"):
+                parts.append(f"\n💡 {data['suggestion']}")
+
+            message = "\n".join(parts)
+        else:
+            message = "Belum cukup data. Catat transaksi minimal 2 bulan."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in detect: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal mendeteksi.")
+
+
+async def _handle_goal_command(chat_id: int, user_id: int, args: list):
+    """#11 Goal-based Saving."""
+    goal_text = " ".join(args) if args else "Tabungan darurat 3 bulan"
+
+    access = await check_credits_and_consume(user_id, feature="goal_saving")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_goal_saving
+
+        await send_telegram_message(chat_id, f"🎯 Merencanakan target: {goal_text}...")
+        result = await get_goal_saving(user_id, goal_text=goal_text)
+
+        if result.get("success"):
+            data = result["data"]
+
+            message = (
+                f"🎯 <b>Target Tabungan</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Target: <b>{data.get('goal_name', goal_text)}</b>\n"
+                f"Nominal Target: <b>Rp{data.get('target_amount', 0):,}</b>\n"
+                f"Tabungan saat ini: <b>Rp{data.get('current_savings', 0):,}</b>\n\n"
+                f"Tabungan per bulan: <b>Rp{data.get('monthly_saving', 0):,}</b>\n"
+                f"Estimasi tercapai: <b>{data.get('months_to_goal', 0)} bulan</b>\n\n"
+            )
+
+            if data.get("strategy"):
+                message += f"💡 {data['strategy']}"
+        else:
+            message = "Belum cukup data untuk perencanaan."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in goal: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal merencanakan.")
+
+
+async def _handle_payday_command(chat_id: int, user_id: int):
+    """#12 Payday Planning."""
+    access = await check_credits_and_consume(user_id, feature="payday_planning")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_payday_planning
+
+        await send_telegram_message(chat_id, "💰 Merencanakan alokasi gaji...")
+        result = await get_payday_planning(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+
+            message = (
+                f"💰 <b>Perencanaan Gaji</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Pemasukan terakhir: <b>Rp{data.get('income_amount', 0):,}</b>\n\n"
+                f"Saran pembagian:\n"
+            )
+
+            allocations = data.get("allocations", [])
+            for alloc in allocations:
+                message += f"• {alloc.get('category', '?')} — Rp{alloc.get('amount', 0):,} ({alloc.get('percentage', 0)}%)\n"
+
+            if data.get("suggestion"):
+                message += f"\n💡 {data['suggestion']}"
+        else:
+            message = "Belum ada data pemasukan. Catat pemasukan/gaji dulu ya!"
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in payday: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal merencanakan.")
+
+
+async def _handle_overspend_command(chat_id: int, user_id: int):
+    """#13 Category Overspending Alert."""
+    access = await check_credits_and_consume(user_id, feature="overspending_alert")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_overspending_alert
+
+        await send_telegram_message(chat_id, "⚠️ Mengecek kategori boros...")
+        result = await get_overspending_alert(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+
+            overspent = data.get("overspent_categories", [])
+            if overspent:
+                message = (
+                    f"⚠️ <b>Peringatan Pengeluaran</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                )
+                for cat in overspent:
+                    message += (
+                        f"• <b>{cat.get('category', '?')}</b>\n"
+                        f"  Minggu ini: Rp{cat.get('this_week', 0):,}\n"
+                        f"  Rata-rata: Rp{cat.get('avg_weekly', 0):,}\n"
+                        f"  Selisih: +{cat.get('over_percentage', 0)}%\n\n"
+                    )
+
+                if data.get("suggestion"):
+                    message += f"💡 {data['suggestion']}"
+            else:
+                message = "✅ Semua kategori pengeluaran masih dalam batas normal minggu ini!"
+        else:
+            message = "Belum cukup data untuk perbandingan."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in overspend: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal menganalisis.")
+
+
+async def _handle_weekend_command(chat_id: int, user_id: int):
+    """#14 Weekend Spending Pattern."""
+    access = await check_credits_and_consume(user_id, feature="advanced_tracking")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_weekend_pattern
+
+        await send_telegram_message(chat_id, "📊 Menganalisis pola akhir pekan...")
+        result = await get_weekend_pattern(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+
+            message = (
+                f"📊 <b>Pola Belanja</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Rata-rata hari kerja: <b>Rp{data.get('weekday_avg', 0):,}</b>/hari\n"
+                f"Rata-rata akhir pekan: <b>Rp{data.get('weekend_avg', 0):,}</b>/hari\n"
+                f"Selisih: <b>{data.get('difference_pct', 0)}%</b> lebih tinggi di akhir pekan\n\n"
+            )
+
+            if data.get("insight"):
+                message += f"💡 {data['insight']}"
+        else:
+            message = "Belum cukup data untuk analisis pola weekend."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in weekend: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal menganalisis.")
+
+
+async def _handle_limit_command(chat_id: int, user_id: int):
+    """#15 Daily Expense Limit Reminder."""
+    access = await check_credits_and_consume(user_id, feature="spending_alert")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_expense_limit
+
+        await send_telegram_message(chat_id, "📌 Mengecek batas pengeluaran...")
+        result = await get_expense_limit(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+            today_spent = data.get("today_spent", 0)
+            suggested_limit = data.get("suggested_limit", 0)
+            remaining = max(0, suggested_limit - today_spent)
+            pct = int((today_spent / suggested_limit * 100)) if suggested_limit > 0 else 0
+
+            # Status emoji
+            if pct >= 100:
+                status_emoji = "🔴"
+            elif pct >= 80:
+                status_emoji = "🟡"
+            else:
+                status_emoji = "🟢"
+
+            message = (
+                f"📌 <b>Pengingat Harian</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Batas pengeluaran: <b>Rp{suggested_limit:,}</b>\n"
+                f"Sudah digunakan: <b>Rp{today_spent:,}</b>\n"
+                f"Sisa: <b>Rp{remaining:,}</b>\n"
+                f"Status: {status_emoji} {pct}% terpakai\n\n"
+            )
+
+            if data.get("suggestion"):
+                message += f"💡 {data['suggestion']}"
+        else:
+            message = "Belum cukup data."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in limit: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal menganalisis.")
+
+
+async def _handle_expense_prediction_command(chat_id: int, user_id: int):
+    """#16 Expense Prediction."""
+    access = await check_credits_and_consume(user_id, feature="expense_prediction")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_expense_prediction
+
+        await send_telegram_message(chat_id, "🔮 Memprediksi pengeluaran bulan ini...")
+        result = await get_expense_prediction(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+
+            message = (
+                f"🔮 <b>Prediksi Pengeluaran Bulanan</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Pengeluaran saat ini: <b>Rp{data.get('current_total', 0):,}</b>\n"
+                f"Prediksi akhir bulan: <b>Rp{data.get('predicted_total', 0):,}</b>\n"
+                f"Rata-rata harian: <b>Rp{data.get('daily_avg', 0):,}</b>\n\n"
+            )
+
+            if data.get("insight"):
+                message += f"💡 {data['insight']}"
+        else:
+            message = "Belum cukup data untuk prediksi."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in expense prediction: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal memprediksi.")
+
+
+async def _handle_opportunity_command(chat_id: int, user_id: int):
+    """#17 Savings Opportunity Finder."""
+    access = await check_credits_and_consume(user_id, feature="saving_recommendation")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_savings_opportunity
+
+        await send_telegram_message(chat_id, "💡 Mencari peluang hemat...")
+        result = await get_savings_opportunity(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+
+            message = (
+                f"💡 <b>Peluang Hemat</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            )
+
+            opportunities = data.get("opportunities", [])
+            for opp in opportunities:
+                message += (
+                    f"• {opp.get('description', '-')}\n"
+                    f"  Potensi hemat: <b>Rp{opp.get('savings_amount', 0):,}/bulan</b>\n\n"
+                )
+
+            if data.get("total_potential"):
+                message += f"Total potensi hemat: <b>Rp{data['total_potential']:,}/bulan</b>\n\n"
+
+            if data.get("summary"):
+                message += f"💡 {data['summary']}"
+        else:
+            message = "Belum cukup data untuk analisis."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in opportunity: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal menganalisis.")
+
+
+async def _handle_strategy_command(chat_id: int, user_id: int):
+    """#20 Weekly Strategy Suggestion."""
+    access = await check_credits_and_consume(user_id, feature="weekly_strategy")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_weekly_strategy
+
+        await send_telegram_message(chat_id, "📊 Merumuskan strategi minggu depan...")
+        result = await get_weekly_strategy(user_id)
+
+        if result.get("success"):
+            data = result["data"]
+
+            message = (
+                f"📊 <b>Strategi Minggu Depan</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            )
+
+            if data.get("strategy"):
+                message += f"{data['strategy']}\n\n"
+
+            strategies = data.get("strategies", [])
+            for s in strategies:
+                message += f"• {s}\n"
+
+            if data.get("expected_savings"):
+                message += f"\n💰 Potensi tambahan tabungan: <b>Rp{data['expected_savings']:,}</b>"
+        else:
+            message = "Belum cukup data untuk strategi."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in strategy: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal merumuskan strategi.")
+
+
+async def _handle_chat_command(chat_id: int, user_id: int, args: list):
+    """#18 AI Financial Chat."""
+    question = " ".join(args) if args else ""
+
+    if not question:
+        await send_telegram_message(
+            chat_id,
+            "💬 <b>AI Financial Chat</b>\n\n"
+            "Tanyakan apa saja tentang keuanganmu!\n"
+            "Contoh: /chat kenapa uangku cepat habis bulan ini?\n\n"
+            "Atau langsung ketik pertanyaan kamu."
+        )
+        return
+
+    access = await check_credits_and_consume(user_id, feature="ai_chat")
+    if not access["allowed"]:
+        await send_telegram_message(chat_id, access["message"])
+        return
+
+    try:
+        from worker.analysis_service import get_ai_chat
+
+        await send_telegram_message(chat_id, "💬 Menganalisis pertanyaanmu...")
+        result = await get_ai_chat(user_id, question)
+
+        if result.get("success"):
+            data = result["data"]
+            answer = data.get("answer", data.get("response", "Maaf, saya tidak bisa menjawab."))
+
+            message = (
+                f"💬 <b>FiNot AI</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"{answer}"
+            )
+        else:
+            message = "Belum cukup data untuk menjawab. Catat beberapa transaksi dulu."
+
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        logger.error(f"Error in chat: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal memproses pertanyaan.")
+
 
 
 # ═══════════════════════════════════════════
@@ -1273,11 +1967,51 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
                 await _handle_analysis_command(chat_id, user_id, ["weekly"])
 
         elif intent == UserIntent.UPGRADE:
-            await send_telegram_message(chat_id, format_upgrade_menu())
+            await _handle_upgrade_command(chat_id, user_id)
 
         elif intent == UserIntent.STATUS:
             status = await get_subscription_status(user_id)
             await send_telegram_message(chat_id, format_subscription_status(status))
+
+        # ── New AI feature intents ──
+        elif intent == UserIntent.ANOMALY:
+            await _handle_anomaly_command(chat_id, user_id)
+
+        elif intent == UserIntent.BURN_RATE:
+            await _handle_burnrate_command(chat_id, user_id)
+
+        elif intent == UserIntent.BUDGET:
+            await _handle_budget_command(chat_id, user_id)
+
+        elif intent == UserIntent.SUBSCRIPTION_DETECT:
+            await _handle_detect_command(chat_id, user_id)
+
+        elif intent == UserIntent.GOAL_SAVING:
+            await _handle_goal_command(chat_id, user_id, [text])
+
+        elif intent == UserIntent.PAYDAY:
+            await _handle_payday_command(chat_id, user_id)
+
+        elif intent == UserIntent.OVERSPENDING:
+            await _handle_overspend_command(chat_id, user_id)
+
+        elif intent == UserIntent.WEEKEND_PATTERN:
+            await _handle_weekend_command(chat_id, user_id)
+
+        elif intent == UserIntent.EXPENSE_LIMIT:
+            await _handle_limit_command(chat_id, user_id)
+
+        elif intent == UserIntent.EXPENSE_PREDICTION:
+            await _handle_expense_prediction_command(chat_id, user_id)
+
+        elif intent == UserIntent.SAVINGS_OPPORTUNITY:
+            await _handle_opportunity_command(chat_id, user_id)
+
+        elif intent == UserIntent.AI_CHAT:
+            await _handle_chat_command(chat_id, user_id, [text])
+
+        elif intent == UserIntent.WEEKLY_STRATEGY:
+            await _handle_strategy_command(chat_id, user_id)
 
         elif intent == UserIntent.SMALL_TALK:
             await send_telegram_message(
@@ -1296,12 +2030,15 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
             result = await redeem_voucher(user_id, text)
             
             if result.get("success"):
+                dashboard_url = os.getenv("WEBHOOK_URL", "").rstrip("/")
+                dash_msg = f"\n\n📊 Dashboard Web: {dashboard_url}" if dashboard_url else ""
                 await send_telegram_message(
                     chat_id,
                     f"<b>Voucher Berhasil Diaktifkan!</b>\n\n"
                     f"Paket: <b>{result['plan'].upper()}</b>\n"
                     f"Durasi: <b>{result['duration']} hari</b>\n\n"
-                    "Selamat menggunakan fitur premium dari FiNot! 🚀"
+                    f"Selamat menggunakan fitur premium dari FiNot! 🚀"
+                    f"{dash_msg}"
                 )
             else:
                 await send_telegram_message(
@@ -1309,6 +2046,16 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
                     f"<b>Gagal Rendeem Voucher</b>\n\n"
                     f"{result.get('error', 'Kode tidak valid.')}"
                 )
+
+        elif text.lower().strip() in ("report", "lapor", "laporan", "komplain"):
+            # Redirect to dashboard for reports
+            dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/webhook/telegram").rstrip("/")
+            await send_telegram_message(
+                chat_id,
+                f"📝 Untuk mengirim laporan, silakan gunakan fitur Report di dashboard:\n\n"
+                f"🔗 {dashboard_url}/dashboard/report\n\n"
+                f"Atau ketik /report untuk info lengkap.",
+            )
 
         elif intent == UserIntent.TRANSACTION or confidence < 0.6:
             # Process as transaction
@@ -1323,12 +2070,9 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
 
 
 async def _process_text_transaction(chat_id: int, user_id: int, text: str):
-    """Process text as transaction."""
-    # Check credits
-    access = await check_credits_and_consume(user_id)
-    if not access["allowed"]:
-        await send_telegram_message(chat_id, access["message"])
-        return
+    """Process text as transaction, then auto-generate AI insight."""
+    # Transaction input is free — no credit consumed
+    # Credits are only used for AI analysis features
 
     try:
         from worker import process_text_message
@@ -1337,9 +2081,86 @@ async def _process_text_transaction(chat_id: int, user_id: int, text: str):
         response = format_transaction_response(result)
         await send_telegram_message(chat_id, response)
 
+        # Auto-generate post-transaction AI insight (non-blocking)
+        if result.get("success") and result.get("transactions"):
+            asyncio.ensure_future(
+                _send_post_transaction_insight(chat_id, user_id, result)
+            )
+
     except Exception as e:
         logger.error(f"Error processing text transaction: {e}", exc_info=True)
         await send_telegram_message(chat_id, "Gagal memproses transaksi.")
+
+
+async def _send_post_transaction_insight(chat_id: int, user_id: int, tx_result: dict):
+    """Auto-generate and send a brief AI insight after transaction is recorded."""
+    try:
+        # Check if user has credits (don't consume for auto-insight, it's a bonus)
+        credits = await check_ai_credits(user_id)
+        if credits.get("remaining", 0) <= 0:
+            return  # silently skip if no credits
+
+        # Build text description of the recorded transaction
+        txs = tx_result.get("transactions", [])
+        tx_lines = []
+        for tx in txs:
+            tipo = "Pemasukan" if tx["intent"] == "income" else "Pengeluaran"
+            tx_lines.append(f"{tipo} Rp{tx['amount']:,} [{tx['category']}]")
+        tx_text = ", ".join(tx_lines)
+
+        from worker.analysis_service import get_post_transaction_insight
+
+        result = await get_post_transaction_insight(user_id, tx_text)
+
+        if result.get("success") and result.get("data"):
+            data = result["data"]
+            insight = data.get("insight", "")
+            emoji = data.get("emoji", "💡")
+            if insight:
+                msg = f"{emoji} <b>FiNot Insight</b>\n{insight}"
+                await send_telegram_message(chat_id, msg)
+
+                # Consume 1 credit for the auto-insight
+                await consume_ai_credit(user_id)
+
+        # #19 Smart Notification — auto-check thresholds after expense transactions
+        has_expense = any(tx.get("intent") == "expense" for tx in txs)
+        if has_expense:
+            await _send_smart_notification(chat_id, user_id)
+
+    except Exception as e:
+        # Silently fail - don't disrupt the main flow
+        logger.debug(f"Post-transaction insight skipped: {e}")
+
+
+async def _send_smart_notification(chat_id: int, user_id: int):
+    """#19 Smart Notification — send spending alerts if thresholds are crossed."""
+    try:
+        from worker.analysis_service import get_smart_notification
+
+        result = await get_smart_notification(user_id)
+
+        if not result.get("success") or not result.get("data", {}).get("has_alerts"):
+            return  # no alerts to send
+
+        alerts = result["data"]["alerts"]
+
+        lines = [
+            "📢 <b>Pengingat</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━",
+            "",
+        ]
+
+        for alert in alerts:
+            lines.append(f"{alert.get('emoji', '📢')} {alert['message']}")
+            lines.append("")
+
+        message = "\n".join(lines)
+        await send_telegram_message(chat_id, message)
+
+    except Exception as e:
+        # Silently fail
+        logger.debug(f"Smart notification skipped: {e}")
 
 
 async def _handle_photo(
@@ -1348,20 +2169,7 @@ async def _handle_photo(
     """Handle photo messages - download + OCR."""
     plan = await get_user_plan(user_id)
 
-    # Check scan_receipt feature access
-    if not check_feature_access(plan, "scan_receipt"):
-        await send_telegram_message(
-            chat_id,
-            "📸 Fitur Scan Struk hanya tersedia untuk paket Pro & Elite.\n\n"
-            "Ketik /upgrade untuk info upgrade!"
-        )
-        return
-
-    # Check credits
-    access = await check_credits_and_consume(user_id)
-    if not access["allowed"]:
-        await send_telegram_message(chat_id, access["message"])
-        return
+    # Receipt scanning is free input for all plans — no credit consumed
 
     try:
         await send_telegram_message(chat_id, "Memproses struk... Mohon tunggu.")
@@ -1400,6 +2208,12 @@ async def _handle_photo(
 
         await send_telegram_message(chat_id, response)
 
+        # Auto-generate insight after receipt scan
+        if result.get("success") and result.get("transactions"):
+            asyncio.ensure_future(
+                _send_post_transaction_insight(chat_id, user_id, result)
+            )
+
     except Exception as e:
         logger.error(f"Error handling photo: {e}", exc_info=True)
         await send_telegram_message(
@@ -1410,11 +2224,7 @@ async def _handle_photo(
 
 async def _handle_audio(chat_id: int, user_id: int, message: dict):
     """Handle voice/audio messages."""
-    # Check credits
-    access = await check_credits_and_consume(user_id)
-    if not access["allowed"]:
-        await send_telegram_message(chat_id, access["message"])
-        return
+    # Voice input is free for all plans — no credit consumed
 
     try:
         await send_telegram_message(chat_id, "Memproses pesan suara... Mohon tunggu.")
@@ -1432,6 +2242,12 @@ async def _handle_audio(chat_id: int, user_id: int, message: dict):
         result = await process_audio_message(user_id, media["file_path"])
         response = format_transaction_response(result)
         await send_telegram_message(chat_id, response)
+
+        # Auto-generate insight after voice transaction
+        if result.get("success") and result.get("transactions"):
+            asyncio.ensure_future(
+                _send_post_transaction_insight(chat_id, user_id, result)
+            )
 
     except Exception as e:
         logger.error(f"Error handling audio: {e}", exc_info=True)

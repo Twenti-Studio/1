@@ -17,16 +17,25 @@ model User {
   id          BigInt   @id
   username    String?
   displayName String   @map("display_name")
-  plan        String   @default("free") // free | pro | elite
+  plan        String   @default("free") // free | trial | pro | elite
   createdAt   DateTime @default(now()) @map("created_at")
 
+  // Web dashboard login fields
+  webLogin    String?  @unique @map("web_login")     // unique login username for dashboard
+  webPassword String?  @map("web_password")           // hashed password
+
+  // Trial system
+  trialEndsAt DateTime? @map("trial_ends_at")         // 7-day free trial expiry
+
   // Relations
-  receipts      Receipt[]
-  llmResponses  LlmResponse[]
-  transactions  Transaction[]
-  subscriptions Subscription[]
-  aiCredits     AiCredit[]
-  payments      Payment[]
+  receipts        Receipt[]
+  llmResponses    LlmResponse[]
+  transactions    Transaction[]
+  subscriptions   Subscription[]
+  aiCredits       AiCredit[]
+  payments        Payment[]
+  aiConversations AiConversation[]
+  reports         Report[]
 
   @@map("users")
 }
@@ -201,4 +210,49 @@ model Admin {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("admins")
+}
+
+// ═══════════════════════════════════════════
+// AI CONVERSATION LOG (for dataset)
+// ═══════════════════════════════════════════
+
+model AiConversation {
+  id          Int      @id @default(autoincrement())
+  userId      BigInt   @map("user_id")
+  feature     String   // e.g. "daily_insight", "ai_chat", "budget_suggestion"
+  userQuery   String?  @map("user_query") @db.Text   // what the user asked or triggered
+  aiResponse  String?  @map("ai_response") @db.Text  // what the AI responded
+  aiMeta      Json?    @map("ai_meta")               // parsed JSON response
+  creditUsed  Int      @default(1) @map("credit_used")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([feature])
+  @@index([createdAt])
+  @@map("ai_conversations")
+}
+
+// ═══════════════════════════════════════════
+// USER REPORTS
+// ═══════════════════════════════════════════
+
+model Report {
+  id         Int       @id @default(autoincrement())
+  userId     BigInt    @map("user_id")
+  subject    String
+  message    String    @db.Text
+  category   String    @default("bug") // bug | feature | complaint | other
+  status     String    @default("open") // open | in_progress | resolved | closed
+  adminReply String?   @map("admin_reply") @db.Text
+  repliedAt  DateTime? @map("replied_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("reports")
 }
