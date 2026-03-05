@@ -57,6 +57,34 @@ export default function AdminUsers() {
     showToast("Disalin ke clipboard!");
   }
 
+  const [generatingCreds, setGeneratingCreds] = useState(false);
+
+  async function handleGenerateMissingCreds() {
+    if (!confirm("Generate akun dashboard untuk semua user yang belum punya?\nCredentials akan dikirim via Telegram otomatis.")) return;
+    setGeneratingCreds(true);
+    try {
+      const res = await fetch("/admin/api/app-users/generate-missing-credentials", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.count === 0) {
+          showToast(data.message || "Semua user sudah punya akun!");
+        } else {
+          showToast(`✅ ${data.count} akun berhasil dibuat dan dikirim ke Telegram!`);
+          fetchUsers();
+        }
+      } else {
+        showToast("Gagal generate credentials");
+      }
+    } catch {
+      showToast("Gagal generate credentials");
+    } finally {
+      setGeneratingCreds(false);
+    }
+  }
+
   const filtered = users.filter(
     (u) =>
       (u.display_name || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -64,10 +92,13 @@ export default function AdminUsers() {
       (u.web_login || "").toLowerCase().includes(search.toLowerCase())
   );
 
+  // Count users without credentials
+  const missingCredsCount = users.filter((u) => !u.has_web_access).length;
+
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
             <UsersIcon className="w-5 h-5 text-indigo-600" />
@@ -77,12 +108,24 @@ export default function AdminUsers() {
             <p className="text-sm text-gray-500">{users.length} user terdaftar</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          <UserPlusIcon className="w-4 h-4" /> Tambah User
-        </button>
+        <div className="flex items-center gap-2">
+          {missingCredsCount > 0 && (
+            <button
+              onClick={handleGenerateMissingCreds}
+              disabled={generatingCreds}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+            >
+              {generatingCreds ? <Spinner /> : <KeyIcon className="w-4 h-4" />}
+              Generate {missingCredsCount} Akun
+            </button>
+          )}
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <UserPlusIcon className="w-4 h-4" /> Tambah User
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -137,13 +180,12 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`px-2 py-0.5 text-xs font-semibold rounded-md capitalize ${
-                          u.plan === "elite"
+                        className={`px-2 py-0.5 text-xs font-semibold rounded-md capitalize ${u.plan === "elite"
                             ? "bg-purple-100 text-purple-700"
                             : u.plan === "pro"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
                       >
                         {u.plan}
                       </span>
@@ -491,15 +533,14 @@ function EditUserModal({ user, onClose, onSaved, showToast }) {
                   key={p}
                   type="button"
                   onClick={() => setPlan(p)}
-                  className={`py-2.5 text-sm font-semibold rounded-lg capitalize border-2 transition-all ${
-                    plan === p
+                  className={`py-2.5 text-sm font-semibold rounded-lg capitalize border-2 transition-all ${plan === p
                       ? p === "elite"
                         ? "border-purple-500 bg-purple-50 text-purple-700"
                         : p === "pro"
-                        ? "border-orange-500 bg-orange-50 text-orange-700"
-                        : "border-gray-400 bg-gray-50 text-gray-700"
+                          ? "border-orange-500 bg-orange-50 text-orange-700"
+                          : "border-gray-400 bg-gray-50 text-gray-700"
                       : "border-gray-200 text-gray-400 hover:border-gray-300"
-                  }`}
+                    }`}
                 >
                   {p}
                 </button>

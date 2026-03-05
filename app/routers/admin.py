@@ -498,6 +498,132 @@ async def set_user_password(
     }
 
 
+# ─── Bulk Credential Generation ──────────────────────────
+
+
+@router.post("/app-users/generate-missing-credentials")
+async def generate_missing_credentials(admin: str = Depends(require_admin)):
+    """Find all users who don't have web dashboard credentials and create them.
+    Also sends credentials via Telegram to each user.
+    """
+    import re as _re
+
+    # Find users without web credentials
+    users_without_creds = await prisma.user.find_many(
+        where={
+            "OR": [
+                {"webLogin": None},
+                {"webPassword": None},
+                {"webLogin": ""},
+                {"webPassword": ""},
+            ]
+        },
+        order={"createdAt": "desc"},
+    )
+
+    if not users_without_creds:
+        return {"success": True, "message": "Semua user sudah punya akun dashboard!", "count": 0}
+
+    results = []
+    dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/")
+    # Clean up URL for dashboard
+    if "/webhook" in dashboard_url:
+        dashboard_url = dashboard_url.split("/webhook")[0]
+
+    for u in users_without_creds:
+        try:
+            # Generate web_login from display name or username
+            base = _re.sub(r"[^a-z0-9]", "", (u.displayName or u.username or f"user{u.id}").lower())
+            if len(base) < 3:
+                base = "user"
+            web_login = base
+
+            # Ensure uniqueness
+            counter = 1
+            while await prisma.user.find_first(where={"webLogin": web_login, "id": {"not": u.id}}):
+                web_login = f"{base}{counter}"
+                counter += 1
+
+            password = _generate_password()
+            hashed = _hash_password(password)
+
+            # Also set trial plan if they're on free and don't have trialEndsAt set
+            update_data = {
+                "webLogin": web_login,
+                "webPassword": hashed,
+            }
+
+            # Give trial plan if they haven't had one yet
+            if u.plan in ("free", None) and u.trialEndsAt is None:
+                from datetime import timedelta
+                update_data["plan"] = "trial"
+                update_data["trialEndsAt"] = datetime.now(timezone.utc) + timedelta(days=7)
+
+                # Create trial credits (35 total)
+                existing_credits = await prisma.aicredit.find_first(where={"userId": u.id})
+                if not existing_credits:
+                    await prisma.aicredit.create(
+                        data={
+                            "userId": u.id,
+                            "total": 35,
+                            "used": 0,
+                            "weekStart": datetime.now(timezone.utc),
+                        }
+                    )
+
+            await prisma.user.update(where={"id": u.id}, data=update_data)
+
+            # Send credentials via Telegram
+            try:
+                from app.webhook.telegram import send_telegram_message
+
+                plan_label = update_data.get("plan", u.plan or "free").upper()
+                trial_msg = ""
+                if update_data.get("plan") == "trial":
+                    trial_msg = (
+                        "\n\n🎁 <b>Bonus!</b> Kamu mendapat Trial 7 hari gratis "
+                        "dengan akses semua fitur AI (35 kredit)!"
+                    )
+
+                msg = (
+                    f"🎉 <b>Akun Dashboard FiNot Kamu Sudah Siap!</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"📊 Dashboard: <b>{dashboard_url}/login</b>\n\n"
+                    f"👤 Username: <code>{web_login}</code>\n"
+                    f"🔑 Password: <code>{password}</code>\n\n"
+                    f"Paket: <b>{plan_label}</b>"
+                    f"{trial_msg}\n\n"
+                    f"⚠️ Segera ubah password setelah login!\n"
+                    f"Ketik /help untuk bantuan."
+                )
+                await send_telegram_message(int(u.id), msg)
+            except Exception as e:
+                _logger.warning(f"Failed to send credentials to user {u.id}: {e}")
+
+            results.append({
+                "user_id": str(u.id),
+                "display_name": u.displayName or u.username or "-",
+                "web_login": web_login,
+                "password": password,
+                "plan": update_data.get("plan", u.plan),
+                "notified": True,
+            })
+
+        except Exception as e:
+            _logger.error(f"Failed to generate credentials for user {u.id}: {e}")
+            results.append({
+                "user_id": str(u.id),
+                "display_name": u.displayName or "-",
+                "error": str(e),
+            })
+
+    return {
+        "success": True,
+        "count": len(results),
+        "users": results,
+    }
+
+
 # ─── Reports Management ──────────────────────────────────
 
 
