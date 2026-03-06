@@ -816,13 +816,15 @@ async def _check_ai_access(user_id: int, feature: str):
     from app.services.subscription_service import (
         check_feature_access, get_user_plan, consume_ai_credit,
     )
+    from app.config import FEATURE_CREDIT_COST
     plan = await get_user_plan(user_id)
     if not check_feature_access(plan, feature):
         raise HTTPException(
             status_code=403,
             detail=f"Fitur ini memerlukan paket Pro/Elite. Paket kamu saat ini: {plan}.",
         )
-    consumed = await consume_ai_credit(user_id)
+    cost = FEATURE_CREDIT_COST.get(feature, 1)
+    consumed = await consume_ai_credit(user_id, amount=cost)
     if not consumed:
         raise HTTPException(
             status_code=429,
@@ -849,7 +851,7 @@ async def ai_daily_insight(user_id: int = Depends(require_user)):
 async def ai_balance_prediction(user_id: int = Depends(require_user)):
     """AI-powered balance prediction (how many days left)."""
     from worker.analysis_service import get_balance_prediction
-    await _check_ai_access(user_id, "daily_insight")
+    await _check_ai_access(user_id, "balance_prediction")
     result = await get_balance_prediction(user_id)
     if not result.get("success"):
         raise HTTPException(status_code=500, detail=result.get("error", "Gagal menganalisis"))
@@ -860,7 +862,7 @@ async def ai_balance_prediction(user_id: int = Depends(require_user)):
 async def ai_health_score(user_id: int = Depends(require_user)):
     """AI-powered financial health score (LLM version)."""
     from worker.analysis_service import get_financial_health_score
-    await _check_ai_access(user_id, "daily_insight")
+    await _check_ai_access(user_id, "health_score")
     result = await get_financial_health_score(user_id)
     if not result.get("success"):
         raise HTTPException(status_code=500, detail=result.get("error", "Gagal menganalisis"))
@@ -871,7 +873,7 @@ async def ai_health_score(user_id: int = Depends(require_user)):
 async def ai_simulation(req: SimulationRequest, user_id: int = Depends(require_user)):
     """AI-powered saving simulation with natural language scenario."""
     from worker.analysis_service import get_saving_simulation
-    await _check_ai_access(user_id, "daily_insight")
+    await _check_ai_access(user_id, "saving_recommendation")
     result = await get_saving_simulation(user_id, user_scenario=req.scenario)
     if not result.get("success"):
         raise HTTPException(status_code=500, detail=result.get("error", "Gagal menganalisis"))

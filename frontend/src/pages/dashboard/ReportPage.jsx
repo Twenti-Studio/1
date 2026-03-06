@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API = "/api/dashboard";
+const API = "/api/user";
 const STATUS_LABELS = {
     open: "Menunggu",
     in_progress: "Diproses",

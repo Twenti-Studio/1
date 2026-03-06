@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import AdminLayout from "./components/AdminLayout";
 import DashboardLayout from "./components/DashboardLayout";
 import Layout from "./components/Layout";
@@ -8,6 +8,7 @@ import AdminReports from "./pages/admin/AdminReports";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminVouchers from "./pages/admin/AdminVouchers";
 import CashflowPage from "./pages/dashboard/CashflowPage";
+import InsightPage from "./pages/dashboard/InsightPage";
 import ReportPage from "./pages/dashboard/ReportPage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
 import SimulationPage from "./pages/dashboard/SimulationPage";
@@ -44,12 +45,14 @@ export default function App() {
         <Route path="langganan" element={<SubscriptionPage />} />
         <Route path="transaksi" element={<TransactionPage />} />
         <Route path="report" element={<ReportPage />} />
+        <Route path="insight" element={<InsightPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
       {/* Admin */}
       <Route path="admin/login" element={<AdminLogin />} />
       <Route path="admin" element={<AdminLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="vouchers" element={<AdminVouchers />} />
         <Route path="users" element={<AdminUsers />} />

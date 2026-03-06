@@ -6,6 +6,7 @@ Core message processing pipeline for text, image (OCR), and audio messages.
 
 import logging
 import json
+import asyncio
 from typing import Optional, List, Dict
 from datetime import datetime
 
@@ -47,7 +48,8 @@ async def process_text_message(
         prompt = build_prompt(text, input_source="text")
 
         # 2. Call LLM
-        llm_result = call_llm(prompt=prompt)
+        loop = asyncio.get_event_loop()
+        llm_result = await loop.run_in_executor(None, lambda: call_llm(prompt=prompt))
         llm_text = llm_result["text"]
 
         # 3. Save LLM response
@@ -163,7 +165,8 @@ async def process_image_message(
 
         # 4. Build prompt & call LLM
         prompt = build_prompt(ocr_text, input_source="ocr")
-        llm_result = call_llm(prompt=prompt)
+        loop = asyncio.get_event_loop()
+        llm_result = await loop.run_in_executor(None, lambda: call_llm(prompt=prompt))
         llm_text = llm_result["text"]
 
         # 5. Save LLM response
@@ -255,7 +258,8 @@ async def process_audio_message(
 
         # 2. Build prompt & call LLM
         prompt = build_prompt(transcribed_text, input_source="audio")
-        llm_result = call_llm(prompt=prompt)
+        loop = asyncio.get_event_loop()
+        llm_result = await loop.run_in_executor(None, lambda: call_llm(prompt=prompt))
         llm_text = llm_result["text"]
 
         # 3. Save LLM response

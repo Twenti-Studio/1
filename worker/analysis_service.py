@@ -100,7 +100,7 @@ async def save_ai_conversation(
                 "feature": feature,
                 "userQuery": user_query,
                 "aiResponse": ai_response,
-                "aiMeta": json.dumps(ai_meta) if ai_meta else None,
+                "aiMeta": ai_meta if ai_meta else None,
                 "creditUsed": credit_used,
             }
         )

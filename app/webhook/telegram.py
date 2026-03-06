@@ -1093,7 +1093,7 @@ async def _handle_predict_command(chat_id: int, user_id: int, args: list):
 
 async def _handle_saving_command(chat_id: int, user_id: int):
     """Handle /saving - Saving Recommendation."""
-    access = await check_credits_and_consume(user_id, feature="daily_insight")
+    access = await check_credits_and_consume(user_id, feature="saving_recommendation")
     if not access["allowed"]:
         await send_telegram_message(chat_id, access["message"])
         return

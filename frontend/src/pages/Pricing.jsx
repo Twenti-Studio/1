@@ -119,13 +119,13 @@ function PaymentModal({ plan, onClose }) {
         body: JSON.stringify({
           plan: plan.id,
           contact_type: contactType,
-          contact_id: contactId.trim(),
+          contact_value: contactId.trim(),
           name: name.trim(),
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setQrUrl(data.qr_url);
+        setQrUrl(data.trakteer_url);
         setPaymentId(data.payment_id);
         setStep("paying");
         pollStatus(data.payment_id);
@@ -263,24 +263,30 @@ function PaymentModal({ plan, onClose }) {
         {/* ── Paying step ── */}
         {step === "paying" && (
           <div className="text-center space-y-5">
-            <h3 className="text-xl font-bold">Scan QRIS untuk Membayar</h3>
+            <h3 className="text-xl font-bold">Lanjutkan Pembayaran</h3>
             <p className="text-sm text-white/50">
-              Buka aplikasi e-wallet atau mobile banking, lalu scan QR code di bawah ini.
+              Klik tombol di bawah untuk membuka halaman pembayaran QRIS via Trakteer.
+              Setelah membayar, kembali ke halaman ini — status akan terupdate otomatis.
             </p>
-            <div className="bg-white rounded-2xl p-4 inline-block">
-              {qrUrl ? (
-                <img src={qrUrl} alt="QRIS" className="w-56 h-56 object-contain" />
-              ) : (
-                <div className="w-56 h-56 flex items-center justify-center text-gray-400">
-                  <Spinner className="w-8 h-8" />
-                </div>
-              )}
-            </div>
+            {qrUrl ? (
+              <a
+                href={qrUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30 transition-all"
+              >
+                <QrCodeIcon className="w-5 h-5" /> Bayar via QRIS
+              </a>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-white/50 text-sm">
+                <Spinner className="w-4 h-4" /> Menyiapkan link pembayaran...
+              </div>
+            )}
             <div className="flex items-center justify-center gap-2 text-white/50 text-sm">
-              <Spinner className="w-3.5 h-3.5" /> Menunggu pembayaran...
+              <Spinner className="w-3.5 h-3.5" /> Menunggu konfirmasi pembayaran...
             </div>
             <p className="text-xs text-white/30">
-              Total: {formatRupiah(plan.price)} &bull; Berlaku 10 menit
+              Total: {formatRupiah(plan.price)} &bull; Berlaku 30 menit
             </p>
             <button
               onClick={() => setStep("form")}

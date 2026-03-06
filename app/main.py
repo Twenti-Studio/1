@@ -395,12 +395,19 @@ async def health():
 
 # SPA catch-all — MUST be last route registered
 # Serves index.html for any path not matched above, allowing React Router to handle it
-@app.get("/{path:path}", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/{path:path}", include_in_schema=False)
 async def spa_catchall(path: str):
     """Catch-all for SPA client-side routes."""
     # Block backend API routes from falling through to the SPA
     if path.startswith(("api/", "admin/api", "webhook", "health")):
         raise HTTPException(status_code=404)
+
+    # Serve static files from the landing directory if they exist
+    # (e.g. logo.jpeg, favicon.jpeg copied from public/)
+    static_file = (LANDING_DIR / path).resolve()
+    if static_file.is_file() and str(static_file).startswith(str(LANDING_DIR.resolve())) and not path.endswith(".html"):
+        return FileResponse(str(static_file))
+
     index_file = LANDING_DIR / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file), media_type="text/html")

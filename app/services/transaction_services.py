@@ -18,7 +18,7 @@ def _get_period_range(period: str) -> Tuple[datetime, datetime, str]:
     """Hitung rentang waktu untuk periode tertentu."""
     now = datetime.now(timezone.utc)
     if period == "today":
-        start = datetime(now.year, now.month, now.day)
+        start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
         label = "harian (hari ini)"
     elif period == "week":
         start = now - timedelta(days=7)

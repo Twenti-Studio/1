@@ -3,7 +3,7 @@ import string
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Optional, List
-from app.main import prisma
+from app.db.connection import prisma
 
 _logger = logging.getLogger(__name__)
 

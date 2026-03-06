@@ -1,3 +1,15 @@
+import {
+    CheckCircleIcon,
+    ClipboardDocumentIcon,
+    EyeIcon,
+    EyeSlashIcon,
+    KeyIcon,
+    MagnifyingGlassIcon,
+    PencilSquareIcon,
+    UserPlusIcon,
+    UsersIcon,
+    XMarkIcon,
+} from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
 
 const Spinner = ({ className = "w-4 h-4" }) => (

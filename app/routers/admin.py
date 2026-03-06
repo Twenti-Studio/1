@@ -565,9 +565,9 @@ async def generate_missing_credentials(admin: str = Depends(require_admin)):
                     await prisma.aicredit.create(
                         data={
                             "userId": u.id,
-                            "total": 35,
-                            "used": 0,
-                            "weekStart": datetime.now(timezone.utc),
+                            "totalCredits": 35,
+                            "usedCredits": 0,
+                            "weekStartAt": datetime.now(timezone.utc),
                         }
                     )
 

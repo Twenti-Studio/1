@@ -134,11 +134,15 @@ async def get_landing_payment_status(payment_id: int):
         if not result.get("found"):
             return JSONResponse({"status": "not_found"})
 
-        return JSONResponse({
+        resp = {
             "status": result["status"],
             "plan": result.get("plan"),
             "amount": result.get("amount"),
-        })
+        }
+        if result.get("credentials"):
+            resp["credentials"] = result["credentials"]
+
+        return JSONResponse(resp)
 
     except Exception as e:
         _logger.error(f"Error checking payment status: {e}", exc_info=True)

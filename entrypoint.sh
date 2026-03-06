@@ -18,11 +18,12 @@ echo "========================================="
 
 # Sync schema to database
 echo ""
-echo "🔄 Syncing Prisma schema to database..."
-if python -m prisma db push --accept-data-loss 2>&1; then
-    echo "✅ Schema synced successfully"
+echo "🔄 Applying Prisma migrations..."
+if python -m prisma migrate deploy 2>&1; then
+    echo "✅ Migrations applied successfully"
 else
-    echo "⚠️  Schema sync failed - will retry on next restart"
+    echo "⚠️  Migration failed - falling back to db push..."
+    python -m prisma db push 2>&1 || echo "⚠️  Schema sync failed - will retry on next restart"
 fi
 
 # Generate Prisma client

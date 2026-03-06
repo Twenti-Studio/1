@@ -349,8 +349,9 @@ async def adjust_credits(
         plan_config = PLAN_CONFIG.get(plan, PLAN_CONFIG["free"])
 
         if plan == "free":
-            period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            default_total = plan_config.get("ai_credits_monthly", 5)
+            period_start = now - timedelta(days=now.weekday())
+            period_start = period_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            default_total = plan_config.get("ai_credits_weekly", 5)
         else:
             period_start = now - timedelta(days=now.weekday())
             period_start = period_start.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -452,7 +453,7 @@ async def send_broadcast(target: str, message: str) -> Dict[str, Any]:
                         json={
                             "chat_id": int(user.id),
                             "text": message,
-                            "parse_mode": "Markdown",
+                            "parse_mode": "HTML",
                         },
                     )
                     if resp.status_code == 200 and resp.json().get("ok"):

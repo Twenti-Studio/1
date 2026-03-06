@@ -9,10 +9,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ═══════════════════════════════════════════
-// USER & SUBSCRIPTION MODELS
-// ═══════════════════════════════════════════
 
+// USER & SUBSCRIPTION MODELS
 model User {
   id          BigInt   @id
   username    String?
@@ -72,10 +70,8 @@ model AiCredit {
   @@map("ai_credits")
 }
 
-// ═══════════════════════════════════════════
-// PAYMENT MODELS (Trakteer QRIS)
-// ═══════════════════════════════════════════
 
+// PAYMENT MODELS (Trakteer QRIS)
 model Payment {
   id              Int      @id @default(autoincrement())
   userId          BigInt   @map("user_id")
@@ -96,10 +92,8 @@ model Payment {
   @@map("payments")
 }
 
-// ═══════════════════════════════════════════
-// RECEIPT & OCR MODELS
-// ═══════════════════════════════════════════
 
+// RECEIPT & OCR MODELS
 model Receipt {
   id         Int       @id @default(autoincrement())
   userId     BigInt    @map("user_id")
@@ -130,10 +124,8 @@ model OcrText {
   @@map("ocr_texts")
 }
 
-// ═══════════════════════════════════════════
-// LLM RESPONSE MODEL
-// ═══════════════════════════════════════════
 
+// LLM RESPONSE MODEL
 model LlmResponse {
   id          Int      @id @default(autoincrement())
   userId      BigInt?  @map("user_id")
@@ -153,10 +145,8 @@ model LlmResponse {
   @@map("llm_responses")
 }
 
-// ═══════════════════════════════════════════
-// TRANSACTION MODEL
-// ═══════════════════════════════════════════
 
+// TRANSACTION MODEL
 model Transaction {
   id            BigInt    @id @default(autoincrement())
   userId        BigInt?   @map("user_id")
@@ -185,10 +175,8 @@ model Transaction {
   @@map("transactions")
 }
 
-// ═══════════════════════════════════════════
-// NEW: VOUCHER & ADMIN MODELS
-// ═══════════════════════════════════════════
 
+// NEW: VOUCHER & ADMIN MODELS
 model Voucher {
   id           Int      @id @default(autoincrement())
   code         String   @unique
@@ -196,7 +184,7 @@ model Voucher {
   durationDays Int      @map("duration_days")
   isUsed       Boolean  @default(false) @map("is_used")
   usedByUserId BigInt?  @map("used_by_user_id")
-  targetUser   String?  @map("target_user") // Note: Telegram username or WhatsApp
+  targetUser   String?  @map("target_user") // Note: Telegram username or WhatsApp username
   createdAt    DateTime @default(now()) @map("created_at")
   usedAt       DateTime? @map("used_at")
 
@@ -212,10 +200,8 @@ model Admin {
   @@map("admins")
 }
 
-// ═══════════════════════════════════════════
-// AI CONVERSATION LOG (for dataset)
-// ═══════════════════════════════════════════
 
+// AI CONVERSATION LOG (for dataset)
 model AiConversation {
   id          Int      @id @default(autoincrement())
   userId      BigInt   @map("user_id")
@@ -234,10 +220,8 @@ model AiConversation {
   @@map("ai_conversations")
 }
 
-// ═══════════════════════════════════════════
-// USER REPORTS
-// ═══════════════════════════════════════════
 
+// USER REPORTS
 model Report {
   id         Int       @id @default(autoincrement())
   userId     BigInt    @map("user_id")

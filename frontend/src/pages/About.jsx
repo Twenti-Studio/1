@@ -4,18 +4,22 @@ import Logo from "../components/Logo";
 const VALUES = [
   {
     icon: LightBulbIcon,
+    title: "Simplicity First",
     desc: "Keuangan tidak harus rumit. Kami percaya bahwa mencatat pengeluaran harus semudah mengirim pesan ke teman.",
   },
   {
     icon: ShieldCheckIcon,
+    title: "Privasi & Keamanan",
     desc: "Data keuanganmu adalah milikmu. Kami tidak pernah membagikan, menjual, atau menggunakan data penggunamu untuk keperluan selain meningkatkan layanan FiNot.",
   },
   {
     icon: UsersIcon,
+    title: "Untuk Semua Orang",
     desc: "FiNot dirancang untuk semua orang — dari mahasiswa yang baru belajar mengelola uang jajan hingga pekerja profesional yang ingin mengoptimalkan keuangan.",
   },
   {
     icon: HeartIcon,
+    title: "Berbasis Kebutuhan Nyata",
     desc: "Setiap fitur kami bangun berdasarkan kebutuhan nyata pengguna Indonesia. Kami mendengarkan feedback dan terus berinovasi untuk memberikan pengalaman terbaik.",
   },
 ];

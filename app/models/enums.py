@@ -18,5 +18,6 @@ class MessageSource(str, Enum):
 
 class PlanType(str, Enum):
     FREE = "free"
+    TRIAL = "trial"
     PRO = "pro"
     ELITE = "elite"
