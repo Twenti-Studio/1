@@ -116,11 +116,12 @@ async def create_landing_payment(req: PaymentCreateRequest):
         # Build embed URL for iframe (Trakteer tip embed)
         trakteer_embed = None
         if TRAKTEER_PAGE_URL and result.get("transaction_id"):
-            # e.g. https://trakteer.id/twenti_studio → twenti_studio
-            page_slug = TRAKTEER_PAGE_URL.rstrip("/").rsplit("/", 1)[-1]
-            base = TRAKTEER_PAGE_URL.rstrip("/").rsplit(page_slug, 1)[0].rstrip("/")
+            # Normalise: strip trailing /tip if present, then append /tip/embed/...
+            base_page = TRAKTEER_PAGE_URL.rstrip("/")
+            if base_page.endswith("/tip"):
+                base_page = base_page[:-4]
             trakteer_embed = (
-                f"{base}/{page_slug}/tip/embed/theme/dark"
+                f"{base_page}/tip/embed/theme/dark"
                 f"?quantity={trakteer_qty}"
                 f"&message=FiNot-{req.plan.upper()}-{tx_id}"
             )

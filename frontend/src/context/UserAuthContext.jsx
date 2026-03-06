@@ -7,6 +7,11 @@ export function UserAuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const checkAuth = useCallback(async () => {
+    // Only auto-check session on dashboard pages to avoid 401 noise on landing/pricing
+    if (!window.location.pathname.startsWith("/dashboard")) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch("/api/user/me");
       if (res.ok) {

@@ -1,11 +1,23 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { useSiteSettings } from "../context/SiteSettingsContext";
 
 export default function LegalPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
+  const siteSettings = useSiteSettings();
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Redirect if this legal page is disabled in settings
+  useEffect(() => {
+    if (!siteSettings) return; // still loading
+    const disabled =
+      (slug === "terms-of-service" && siteSettings.legal_tos_enabled === false) ||
+      (slug === "privacy-policy" && siteSettings.legal_privacy_enabled === false);
+    if (disabled) navigate("/", { replace: true });
+  }, [siteSettings, slug, navigate]);
 
   useEffect(() => {
     setLoading(true);

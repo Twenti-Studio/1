@@ -1,6 +1,7 @@
 import { ArrowTopRightOnSquareIcon, Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useSiteSettings } from "../context/SiteSettingsContext";
 import Logo from "./Logo";
 
 const NAV = [
@@ -16,6 +17,9 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const siteSettings = useSiteSettings();
+  const showTos = siteSettings?.legal_tos_enabled !== false;
+  const showPP = siteSettings?.legal_privacy_enabled !== false;
 
   useEffect(() => {
     setMobileOpen(false);
@@ -151,9 +155,9 @@ export default function Layout() {
                   {n.label}
                 </NavLink>
               ))}
-              <span className="text-white/15">|</span>
-              <NavLink to="/legal/terms-of-service" className="hover:text-white/70 transition-colors">Terms of Service</NavLink>
-              <NavLink to="/legal/privacy-policy" className="hover:text-white/70 transition-colors">Privacy Policy</NavLink>
+              {(showTos || showPP) && <span className="text-white/15">|</span>}
+              {showTos && <NavLink to="/legal/terms-of-service" className="hover:text-white/70 transition-colors">Terms of Service</NavLink>}
+              {showPP && <NavLink to="/legal/privacy-policy" className="hover:text-white/70 transition-colors">Privacy Policy</NavLink>}
             </nav>
             <p className="text-xs text-white/30">
               &copy; 2026 FiNot &mdash; Dikembangkan oleh{" "}
