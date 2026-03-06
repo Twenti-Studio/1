@@ -744,3 +744,153 @@ async def admin_update_report_status(
 
     return {"success": True, "status": status}
 
+
+# ═══════════════════════════════════════════════════════════
+# Legal Documents Management (Terms of Service / Privacy Policy)
+# ═══════════════════════════════════════════════════════════
+
+
+class LegalDocumentUpdate(BaseModel):
+    title: str
+    content: str
+
+
+@router.get("/legal")
+async def admin_list_legal(admin: str = Depends(require_admin)):
+    """List all legal documents."""
+    from app.routers.landing_api import _get_or_seed_legal
+
+    docs = []
+    for slug in ("terms-of-service", "privacy-policy"):
+        doc = await _get_or_seed_legal(slug)
+        if doc:
+            docs.append({
+                "id": doc.id,
+                "slug": doc.slug,
+                "title": doc.title,
+                "content": doc.content,
+                "updated_at": doc.updatedAt.isoformat(),
+            })
+    return {"documents": docs}
+
+
+@router.get("/legal/{slug}")
+async def admin_get_legal(slug: str, admin: str = Depends(require_admin)):
+    """Get a single legal document by slug."""
+    if slug not in ("terms-of-service", "privacy-policy"):
+        return JSONResponse({"success": False, "error": "Invalid slug"}, status_code=404)
+
+    from app.routers.landing_api import _get_or_seed_legal
+
+    doc = await _get_or_seed_legal(slug)
+    if not doc:
+        return JSONResponse({"success": False, "error": "Not found"}, status_code=404)
+
+    return {
+        "id": doc.id,
+        "slug": doc.slug,
+        "title": doc.title,
+        "content": doc.content,
+        "updated_at": doc.updatedAt.isoformat(),
+    }
+
+
+@router.put("/legal/{slug}")
+async def admin_update_legal(
+    slug: str,
+    body: LegalDocumentUpdate,
+    admin: str = Depends(require_admin),
+):
+    """Update a legal document."""
+    if slug not in ("terms-of-service", "privacy-policy"):
+        return JSONResponse({"success": False, "error": "Invalid slug"}, status_code=404)
+
+    from app.routers.landing_api import _get_or_seed_legal
+
+    doc = await _get_or_seed_legal(slug)
+    if not doc:
+        return JSONResponse({"success": False, "error": "Not found"}, status_code=404)
+
+    updated = await prisma.legaldocument.update(
+        where={"id": doc.id},
+        data={"title": body.title, "content": body.content},
+    )
+
+    _logger.info(f"Legal document '{slug}' updated by admin '{admin}'")
+    return {
+        "success": True,
+        "slug": updated.slug,
+        "title": updated.title,
+        "updated_at": updated.updatedAt.isoformat(),
+    }
+
+
+# ═══════════════════════════════════════════════════════════
+# Site Settings (Feature Toggles)
+# ═══════════════════════════════════════════════════════════
+
+import json as _json
+
+# Default settings — auto-seeded on first read
+_DEFAULT_SETTINGS: dict = {
+    "payment_enabled": True,
+    "registration_enabled": True,
+    "trial_enabled": True,
+    "legal_tos_enabled": True,
+    "legal_privacy_enabled": True,
+    "telegram_bot_enabled": True,
+    "web_dashboard_enabled": True,
+    "maintenance_mode": False,
+}
+
+
+async def _get_all_settings() -> dict:
+    """Return all settings as a dict, seeding defaults for any missing keys."""
+    rows = await prisma.sitesettings.find_many()
+    existing = {r.key: _json.loads(r.value) for r in rows}
+
+    # Seed any missing keys
+    for key, default in _DEFAULT_SETTINGS.items():
+        if key not in existing:
+            await prisma.sitesettings.create(
+                data={"key": key, "value": _json.dumps(default)}
+            )
+            existing[key] = default
+
+    return existing
+
+
+@router.get("/settings")
+async def admin_get_settings(admin: str = Depends(require_admin)):
+    """Return all site settings."""
+    settings = await _get_all_settings()
+    return {"settings": settings}
+
+
+class SettingsUpdateBody(BaseModel):
+    settings: dict  # { key: value, ... }
+
+
+@router.put("/settings")
+async def admin_update_settings(
+    body: SettingsUpdateBody,
+    admin: str = Depends(require_admin),
+):
+    """Bulk-update site settings."""
+    allowed_keys = set(_DEFAULT_SETTINGS.keys())
+    updated = []
+
+    for key, value in body.settings.items():
+        if key not in allowed_keys:
+            continue
+        await prisma.sitesettings.upsert(
+            where={"key": key},
+            data={
+                "create": {"key": key, "value": _json.dumps(value)},
+                "update": {"value": _json.dumps(value)},
+            },
+        )
+        updated.append(key)
+
+    _logger.info(f"Settings updated by admin '{admin}': {updated}")
+    return {"success": True, "updated": updated}

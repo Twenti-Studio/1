@@ -151,6 +151,9 @@ export default function Layout() {
                   {n.label}
                 </NavLink>
               ))}
+              <span className="text-white/15">|</span>
+              <NavLink to="/legal/terms-of-service" className="hover:text-white/70 transition-colors">Terms of Service</NavLink>
+              <NavLink to="/legal/privacy-policy" className="hover:text-white/70 transition-colors">Privacy Policy</NavLink>
             </nav>
             <p className="text-xs text-white/30">
               &copy; 2026 FiNot &mdash; Dikembangkan oleh{" "}

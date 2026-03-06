@@ -173,6 +173,7 @@ async def edit_telegram_message(
     text: str,
     parse_mode: str = "HTML",
     reply_markup: dict = None,
+    disable_web_page_preview: bool = False,
 ) -> bool:
     """Edit an existing Telegram message."""
     try:
@@ -184,6 +185,8 @@ async def edit_telegram_message(
         }
         if reply_markup:
             payload["reply_markup"] = reply_markup
+        if disable_web_page_preview:
+            payload["disable_web_page_preview"] = True
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(TELEGRAM_EDIT_MSG_URL, json=payload)
@@ -755,18 +758,22 @@ async def _cb_show_order_summary(
 
     text += (
         f"\n━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Dengan melanjutkan pembayaran, kamu menyetujui:\n"
+        f'• <a href="https://finot.twenti.studio/legal/terms-of-service">Terms of Service</a>\n'
+        f'• <a href="https://finot.twenti.studio/legal/privacy-policy">Privacy Policy</a>\n\n'
         f"<i>Lanjutkan pembayaran?</i>"
     )
 
     reply_markup = {
         "inline_keyboard": [
-            [{"text": "Bayar Sekarang", "callback_data": f"confirm_buy:{plan}"}],
+            [{"text": "✅ Setuju & Bayar Sekarang", "callback_data": f"confirm_buy:{plan}"}],
             [{"text": "🔙 Kembali", "callback_data": "menu:upgrade"}],
         ]
     }
 
     await edit_telegram_message(
         chat_id, message_id, text, reply_markup=reply_markup,
+        disable_web_page_preview=True,
     )
 
 

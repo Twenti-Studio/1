@@ -97,9 +97,12 @@ function PaymentModal({ plan, onClose }) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
+  const [embedUrl, setEmbedUrl] = useState("");
+  const [iframeError, setIframeError] = useState(false);
   const [_paymentId, setPaymentId] = useState(null);
   const [credentials, setCredentials] = useState(null);
   const [error, setError] = useState("");
+  const [tosAgreed, setTosAgreed] = useState(false);
 
   const handlePay = async () => {
     if (!contactId.trim()) {
@@ -108,6 +111,10 @@ function PaymentModal({ plan, onClose }) {
     }
     if (!name.trim()) {
       setError("Masukkan nama kamu");
+      return;
+    }
+    if (!tosAgreed) {
+      setError("Kamu harus menyetujui Terms of Service dan Privacy Policy");
       return;
     }
     setError("");
@@ -126,6 +133,8 @@ function PaymentModal({ plan, onClose }) {
       const data = await res.json();
       if (data.success) {
         setQrUrl(data.trakteer_url);
+        setEmbedUrl(data.trakteer_embed || "");
+        setIframeError(false);
         setPaymentId(data.payment_id);
         setStep("paying");
         pollStatus(data.payment_id);
@@ -238,6 +247,22 @@ function PaymentModal({ plan, onClose }) {
               />
             </div>
 
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={tosAgreed}
+                onChange={(e) => setTosAgreed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-border accent-orange shrink-0"
+              />
+              <span className="text-xs text-white/50 leading-relaxed">
+                Saya menyetujui{" "}
+                <a href="/legal/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-orange hover:underline">Terms of Service</a>
+                {" "}dan{" "}
+                <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-orange hover:underline">Privacy Policy</a>
+                {" "}FiNot.
+              </span>
+            </label>
+
             <button
               onClick={handlePay}
               disabled={loading}
@@ -262,32 +287,61 @@ function PaymentModal({ plan, onClose }) {
 
         {/* ── Paying step ── */}
         {step === "paying" && (
-          <div className="text-center space-y-5">
+          <div className="text-center space-y-4">
             <h3 className="text-xl font-bold">Lanjutkan Pembayaran</h3>
-            <p className="text-sm text-white/50">
-              Klik tombol di bawah untuk membuka halaman pembayaran QRIS via Trakteer.
-              Setelah membayar, kembali ke halaman ini — status akan terupdate otomatis.
-            </p>
-            {qrUrl ? (
-              <a
-                href={qrUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30 transition-all"
-              >
-                <QrCodeIcon className="w-5 h-5" /> Bayar via QRIS
-              </a>
+
+            {/* Trakteer embed iframe */}
+            {embedUrl && !iframeError ? (
+              <div className="relative rounded-2xl overflow-hidden border border-border bg-black/30">
+                <iframe
+                  src={embedUrl}
+                  title="Trakteer Payment"
+                  className="w-full border-0"
+                  style={{ height: 520 }}
+                  onError={() => setIframeError(true)}
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"
+                />
+              </div>
+            ) : qrUrl ? (
+              <>
+                <p className="text-sm text-white/50">
+                  Klik tombol di bawah untuk membuka halaman pembayaran QRIS.
+                  Setelah membayar, kembali ke halaman ini — status akan terupdate otomatis.
+                </p>
+                <a
+                  href={qrUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30 transition-all"
+                >
+                  <QrCodeIcon className="w-5 h-5" /> Bayar via QRIS
+                </a>
+              </>
             ) : (
               <div className="flex items-center justify-center gap-2 text-white/50 text-sm">
-                <Spinner className="w-4 h-4" /> Menyiapkan link pembayaran...
+                <Spinner className="w-4 h-4" /> Menyiapkan pembayaran...
               </div>
             )}
+
             <div className="flex items-center justify-center gap-2 text-white/50 text-sm">
               <Spinner className="w-3.5 h-3.5" /> Menunggu konfirmasi pembayaran...
             </div>
             <p className="text-xs text-white/30">
               Total: {formatRupiah(plan.price)} &bull; Berlaku 30 menit
             </p>
+
+            {/* Fallback link when iframe is shown */}
+            {embedUrl && !iframeError && (
+              <a
+                href={qrUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-white/30 hover:text-white/50 underline transition-colors"
+              >
+                Tidak bisa scan? Buka halaman pembayaran
+              </a>
+            )}
+
             <button
               onClick={() => setStep("form")}
               className="text-sm text-white/40 hover:text-white transition-colors flex items-center gap-1 mx-auto"

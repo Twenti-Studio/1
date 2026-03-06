@@ -240,3 +240,26 @@ model Report {
   @@index([createdAt])
   @@map("reports")
 }
+
+
+// LEGAL DOCUMENTS (ToS / Privacy Policy — editable by admin)
+model LegalDocument {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique              // "terms-of-service" | "privacy-policy"
+  title     String
+  content   String   @db.Text             // Markdown content
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("legal_documents")
+}
+
+
+// SITE SETTINGS (Admin-managed key-value config)
+model SiteSettings {
+  key       String   @id                  // e.g. "payment_enabled", "legal_tos_enabled"
+  value     String                        // JSON-encoded value
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}

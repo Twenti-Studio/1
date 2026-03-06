@@ -3,8 +3,10 @@ import AdminLayout from "./components/AdminLayout";
 import DashboardLayout from "./components/DashboardLayout";
 import Layout from "./components/Layout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminLegal from "./pages/admin/AdminLegal";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminReports from "./pages/admin/AdminReports";
+import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminVouchers from "./pages/admin/AdminVouchers";
 import CashflowPage from "./pages/dashboard/CashflowPage";
@@ -20,6 +22,7 @@ import Faq from "./pages/Faq";
 import Features from "./pages/Features";
 import Home from "./pages/Home";
 import HowItWorks from "./pages/HowItWorks";
+import LegalPage from "./pages/LegalPage";
 import Pricing from "./pages/Pricing";
 
 export default function App() {
@@ -32,6 +35,7 @@ export default function App() {
         <Route path="how-it-works" element={<HowItWorks />} />
         <Route path="pricing" element={<Pricing />} />
         <Route path="faq" element={<Faq />} />
+        <Route path="legal/:slug" element={<LegalPage />} />
       </Route>
 
       {/* User Login */}
@@ -57,6 +61,8 @@ export default function App() {
         <Route path="vouchers" element={<AdminVouchers />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="reports" element={<AdminReports />} />
+        <Route path="legal" element={<AdminLegal />} />
+        <Route path="settings" element={<AdminSettings />} />
       </Route>
     </Routes>
   );
