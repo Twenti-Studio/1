@@ -39,6 +39,52 @@ TELEGRAM_EDIT_MSG_URL = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/editMessageText"
 TELEGRAM_ANSWER_CB_URL = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/answerCallbackQuery"
 TELEGRAM_DELETE_MSG_URL = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/deleteMessage"
 
+# In-memory store for pending analysis offers (user_id -> {tx_result, chat_id, timestamp, choices})
+import time as _time
+_pending_analysis: dict[int, dict] = {}
+_PENDING_ANALYSIS_TTL = 300  # 5 minutes
+
+# ── Post-transaction feature registry ──
+# Each entry: (feature_key, label, credit_cost)
+# "spending_alert" is free (no LLM), others cost credits.
+_POST_TX_FEATURES = [
+    ("daily_insight",          "Insight AI",              1),
+    ("spending_alert",         "Pengingat & Alert",       0),
+    ("balance_prediction",     "Prediksi Saldo",          1),
+    ("burn_rate",              "Burn Rate",               1),
+    ("health_score",           "Health Score",            1),
+    ("saving_recommendation",  "Rekomendasi Tabungan",    2),
+    ("budget_suggestion",      "Smart Budget",            2),
+    ("overspending_alert",     "Overspending Alert",      2),
+]
+
+
+async def _build_post_tx_menu(user_id: int):
+    """Build a numbered post-tx menu based on user's plan. Returns (menu_text, choices_dict) or (None, None) if no features."""
+    plan = await get_user_plan(user_id)
+    available = []
+    for feature_key, label, credit_cost in _POST_TX_FEATURES:
+        if check_feature_access(plan, feature_key):
+            available.append((feature_key, label, credit_cost))
+
+    if not available:
+        return None, None
+
+    num_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣"]
+    lines = ["📋 <b>Mau analisis lebih lanjut?</b>", "Balas angka yang diinginkan:\n"]
+    choices: dict[str, str] = {}
+    for idx, (feature_key, label, credit_cost) in enumerate(available):
+        num = str(idx + 1)
+        emoji = num_emojis[idx] if idx < len(num_emojis) else f"{num}."
+        cost_text = f"({credit_cost} kredit)" if credit_cost > 0 else "(gratis)"
+        lines.append(f"{emoji} {label} {cost_text}")
+        choices[num] = feature_key
+        # Also accept the label as text shortcut
+        choices[label.lower()] = feature_key
+
+    lines.append("\n<i>Atau lanjut kirim transaksi baru.</i>")
+    return "\n".join(lines), choices
+
 
 # ═══════════════════════════════════════════
 # HELPER: Send Telegram Messages
@@ -1929,6 +1975,23 @@ async def _handle_chat_command(chat_id: int, user_id: int, args: list):
 async def _handle_text(chat_id: int, user_id: int, text: str):
     """Handle text messages - classify intent then route."""
     try:
+        # Check if user is replying to a pending analysis offer
+        if user_id in _pending_analysis:
+            pending = _pending_analysis[user_id]
+            age = _time.time() - pending["timestamp"]
+            choices = pending.get("choices", {})
+            feature_key = choices.get(text.strip().lower())
+            if age <= _PENDING_ANALYSIS_TTL and feature_key:
+                del _pending_analysis[user_id]
+                tx_result = pending["tx_result"]
+                asyncio.ensure_future(
+                    _dispatch_post_tx_feature(chat_id, user_id, feature_key, tx_result)
+                )
+                return
+            else:
+                # Any other message = decline, clean up
+                del _pending_analysis[user_id]
+
         from worker.llm.intent_classifier import classify_intent, UserIntent
 
         # Classify intent
@@ -2077,10 +2140,7 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
 
 
 async def _process_text_transaction(chat_id: int, user_id: int, text: str):
-    """Process text as transaction, then auto-generate AI insight."""
-    # Transaction input is free — no credit consumed
-    # Credits are only used for AI analysis features
-
+    """Process text as transaction, then offer AI insight."""
     try:
         from worker import process_text_message
 
@@ -2088,15 +2148,82 @@ async def _process_text_transaction(chat_id: int, user_id: int, text: str):
         response = format_transaction_response(result)
         await send_telegram_message(chat_id, response)
 
-        # Auto-generate post-transaction AI insight (non-blocking)
+        # Offer analysis menu based on user's plan (saves tokens)
         if result.get("success") and result.get("transactions"):
-            asyncio.ensure_future(
-                _send_post_transaction_insight(chat_id, user_id, result)
-            )
+            menu_text, choices = await _build_post_tx_menu(user_id)
+            if menu_text and choices:
+                _pending_analysis[user_id] = {
+                    "tx_result": result,
+                    "chat_id": chat_id,
+                    "timestamp": _time.time(),
+                    "choices": choices,
+                }
+                await send_telegram_message(chat_id, menu_text)
 
     except Exception as e:
         logger.error(f"Error processing text transaction: {e}", exc_info=True)
         await send_telegram_message(chat_id, "Gagal memproses transaksi.")
+
+
+async def _send_insight_only(chat_id: int, user_id: int, tx_result: dict):
+    """Send AI insight for the recorded transaction (costs 1 credit)."""
+    try:
+        credits = await check_ai_credits(user_id)
+        if credits.get("remaining", 0) <= 0:
+            await send_telegram_message(chat_id, "Kredit AI habis. Upgrade paket untuk kredit lebih banyak.")
+            return
+
+        txs = tx_result.get("transactions", [])
+        tx_lines = []
+        for tx in txs:
+            tipo = "Pemasukan" if tx["intent"] == "income" else "Pengeluaran"
+            tx_lines.append(f"{tipo} Rp{tx['amount']:,} [{tx['category']}]")
+        tx_text = ", ".join(tx_lines)
+
+        from worker.analysis_service import get_post_transaction_insight
+
+        result = await get_post_transaction_insight(user_id, tx_text)
+
+        if result.get("success") and result.get("data"):
+            data = result["data"]
+            insight = data.get("insight", "")
+            emoji = data.get("emoji", "💡")
+            if insight:
+                msg = f"{emoji} <b>FiNot Insight</b>\n{insight}"
+                await send_telegram_message(chat_id, msg)
+                await consume_ai_credit(user_id)
+        else:
+            await send_telegram_message(chat_id, "Belum cukup data untuk insight saat ini.")
+
+    except Exception as e:
+        logger.debug(f"Post-transaction insight skipped: {e}")
+        await send_telegram_message(chat_id, "Gagal memproses insight.")
+
+
+async def _dispatch_post_tx_feature(chat_id: int, user_id: int, feature_key: str, tx_result: dict):
+    """Route a post-tx menu choice to the appropriate handler."""
+    try:
+        if feature_key == "daily_insight":
+            await _send_insight_only(chat_id, user_id, tx_result)
+        elif feature_key == "spending_alert":
+            await _send_smart_notification(chat_id, user_id)
+        elif feature_key == "balance_prediction":
+            await _handle_predict_command(chat_id, user_id, args=[])
+        elif feature_key == "burn_rate":
+            await _handle_burnrate_command(chat_id, user_id)
+        elif feature_key == "health_score":
+            await _handle_health_command(chat_id, user_id)
+        elif feature_key == "saving_recommendation":
+            await _handle_saving_command(chat_id, user_id)
+        elif feature_key == "budget_suggestion":
+            await _handle_budget_command(chat_id, user_id)
+        elif feature_key == "overspending_alert":
+            await _handle_anomaly_command(chat_id, user_id)
+        else:
+            await send_telegram_message(chat_id, "Fitur tidak tersedia.")
+    except Exception as e:
+        logger.error(f"Error dispatching post-tx feature {feature_key}: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal memproses fitur. Silakan coba lagi.")
 
 
 async def _send_post_transaction_insight(chat_id: int, user_id: int, tx_result: dict):
@@ -2215,11 +2342,17 @@ async def _handle_photo(
 
         await send_telegram_message(chat_id, response)
 
-        # Auto-generate insight after receipt scan
+        # Offer analysis menu after receipt scan
         if result.get("success") and result.get("transactions"):
-            asyncio.ensure_future(
-                _send_post_transaction_insight(chat_id, user_id, result)
-            )
+            menu_text, choices = await _build_post_tx_menu(user_id)
+            if menu_text and choices:
+                _pending_analysis[user_id] = {
+                    "tx_result": result,
+                    "chat_id": chat_id,
+                    "timestamp": _time.time(),
+                    "choices": choices,
+                }
+                await send_telegram_message(chat_id, menu_text)
 
     except Exception as e:
         logger.error(f"Error handling photo: {e}", exc_info=True)
@@ -2250,11 +2383,17 @@ async def _handle_audio(chat_id: int, user_id: int, message: dict):
         response = format_transaction_response(result)
         await send_telegram_message(chat_id, response)
 
-        # Auto-generate insight after voice transaction
+        # Offer analysis menu after voice transaction
         if result.get("success") and result.get("transactions"):
-            asyncio.ensure_future(
-                _send_post_transaction_insight(chat_id, user_id, result)
-            )
+            menu_text, choices = await _build_post_tx_menu(user_id)
+            if menu_text and choices:
+                _pending_analysis[user_id] = {
+                    "tx_result": result,
+                    "chat_id": chat_id,
+                    "timestamp": _time.time(),
+                    "choices": choices,
+                }
+                await send_telegram_message(chat_id, menu_text)
 
     except Exception as e:
         logger.error(f"Error handling audio: {e}", exc_info=True)
