@@ -56,7 +56,12 @@ export default function AdminUsers() {
       });
       if (res.ok) {
         const data = await res.json();
-        setPasswordModal({ userId, password: data.password_plain, login: data.web_login });
+        setPasswordModal({
+          userId,
+          password: data.password_plain,
+          login: data.web_login,
+          notifiedTelegram: data.notified_telegram ?? null,
+        });
         fetchUsers();
       }
     } catch {
@@ -255,6 +260,7 @@ export default function AdminUsers() {
               userId: data.user?.id,
               password: data.password_plain,
               login: data.user?.web_login,
+              notifiedTelegram: data.user?.notified_telegram ?? null,
             });
             fetchUsers();
           }}
@@ -352,7 +358,7 @@ function CreateUserModal({ onClose, onCreated, showToast }) {
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <PlusIcon className="w-4.5 h-4.5" /> Tambah User Baru
+            <UserPlusIcon className="w-4.5 h-4.5" /> Tambah User Baru
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <XMarkIcon className="w-4.5 h-4.5" />
@@ -643,7 +649,21 @@ function PasswordModal({ data, onClose, onCopy }) {
             </div>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
+            {data.notifiedTelegram && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <p className="text-xs text-emerald-700 font-medium">
+                  Kredensial sudah dikirim ke Telegram user.
+                </p>
+              </div>
+            )}
+            {data.notifiedTelegram === false && (
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-xs text-gray-500 font-medium">
+                  User tidak punya Telegram ID — kirim kredensial secara manual.
+                </p>
+              </div>
+            )}
             <button
               onClick={() =>
                 onCopy(`Username: ${data.login}\nPassword: ${data.password}`)

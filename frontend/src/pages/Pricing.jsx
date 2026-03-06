@@ -100,9 +100,6 @@ function PaymentModal({ plan, onClose }) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
-  const [embedUrl, setEmbedUrl] = useState("");
-  const [embedChecked, setEmbedChecked] = useState(false);
-  const [embedOk, setEmbedOk] = useState(false);
   const [_paymentId, setPaymentId] = useState(null);
   const [credentials, setCredentials] = useState(null);
   const [error, setError] = useState("");
@@ -140,28 +137,6 @@ function PaymentModal({ plan, onClose }) {
         setPaymentId(data.payment_id);
         setStep("paying");
         pollStatus(data.payment_id);
-
-        // Probe embed URL — if reachable, show iframe; otherwise direct link
-        const embed = data.trakteer_embed || "";
-        setEmbedUrl(embed);
-        setEmbedChecked(false);
-        setEmbedOk(false);
-        if (embed) {
-          fetch(embed, { method: "HEAD", mode: "no-cors" })
-            .then(() => {
-              // no-cors always resolves opaquely; use a hidden iframe load test
-              setEmbedOk(true);
-              setEmbedChecked(true);
-            })
-            .catch(() => {
-              setEmbedOk(false);
-              setEmbedChecked(true);
-            });
-          // Fallback timeout — if probe takes too long, skip embed
-          setTimeout(() => setEmbedChecked((prev) => { if (!prev) { setEmbedOk(false); return true; } return prev; }), 4000);
-        } else {
-          setEmbedChecked(true);
-        }
       } else {
         setError(data.error || "Gagal membuat pembayaran");
       }
@@ -320,22 +295,7 @@ function PaymentModal({ plan, onClose }) {
           <div className="text-center space-y-4">
             <h3 className="text-xl font-bold">Lanjutkan Pembayaran</h3>
 
-            {/* Show loading while checking embed, then iframe or direct */}
-            {!embedChecked ? (
-              <div className="flex items-center justify-center gap-2 text-white/50 text-sm py-4">
-                <Spinner className="w-4 h-4" /> Menyiapkan pembayaran...
-              </div>
-            ) : embedOk && embedUrl ? (
-              <div className="relative rounded-2xl overflow-hidden border border-border bg-black/30">
-                <iframe
-                  src={embedUrl}
-                  title="Trakteer Payment"
-                  className="w-full border-0"
-                  style={{ height: 520 }}
-                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"
-                />
-              </div>
-            ) : qrUrl ? (
+            {qrUrl ? (
               <>
                 <p className="text-sm text-white/50">
                   Klik tombol di bawah untuk membuka halaman pembayaran QRIS.
@@ -362,18 +322,6 @@ function PaymentModal({ plan, onClose }) {
             <p className="text-xs text-white/30">
               Total: {formatRupiah(plan.price)} &bull; Berlaku 30 menit
             </p>
-
-            {/* Fallback link when iframe is shown */}
-            {embedOk && embedUrl && (
-              <a
-                href={qrUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-white/30 hover:text-white/50 underline transition-colors"
-              >
-                Tidak bisa scan? Buka halaman pembayaran
-              </a>
-            )}
 
             <button
               onClick={() => setStep("form")}

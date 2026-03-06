@@ -113,19 +113,6 @@ async def create_landing_payment(req: PaymentCreateRequest):
                 f"&message=FiNot-{req.plan.upper()}-{tx_id}"
             )
 
-        # Build embed URL for iframe (Trakteer tip embed)
-        trakteer_embed = None
-        if TRAKTEER_PAGE_URL and result.get("transaction_id"):
-            # Normalise: strip trailing /tip if present, then append /tip/embed/...
-            base_page = TRAKTEER_PAGE_URL.rstrip("/")
-            if base_page.endswith("/tip"):
-                base_page = base_page[:-4]
-            trakteer_embed = (
-                f"{base_page}/tip/embed/theme/dark"
-                f"?quantity={trakteer_qty}"
-                f"&message=FiNot-{req.plan.upper()}-{tx_id}"
-            )
-
         return JSONResponse({
             "success": True,
             "payment_id": result["payment_id"],
@@ -134,7 +121,6 @@ async def create_landing_payment(req: PaymentCreateRequest):
             "plan_name": plan_config["name"],
             "amount": plan_config["price"],
             "trakteer_url": trakteer_url,
-            "trakteer_embed": trakteer_embed,
         })
 
     except Exception as e:

@@ -377,6 +377,31 @@ async def create_app_user(
         except Exception as e:
             _logger.warning(f"Failed to create subscription for new user {new_id}: {e}")
 
+    # Send credentials via Telegram if user has a Telegram ID
+    notified = False
+    if req.telegram_id:
+        try:
+            from app.webhook.telegram import send_telegram_message
+
+            dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/")
+            if "/webhook" in dashboard_url:
+                dashboard_url = dashboard_url.split("/webhook")[0]
+
+            msg = (
+                f"🎉 <b>Akun Dashboard FiNot Kamu Sudah Siap!</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"📊 Dashboard: <b>{dashboard_url}/login</b>\n\n"
+                f"👤 Username: <code>{web_login}</code>\n"
+                f"🔑 Password: <code>{password}</code>\n\n"
+                f"Paket: <b>{chosen_plan.upper()}</b>\n\n"
+                f"⚠️ Segera ubah password setelah login!\n"
+                f"Ketik /help untuk bantuan."
+            )
+            await send_telegram_message(req.telegram_id, msg)
+            notified = True
+        except Exception as e:
+            _logger.warning(f"Failed to send credentials to user {new_id}: {e}")
+
     return {
         "success": True,
         "user": {
@@ -385,6 +410,7 @@ async def create_app_user(
             "web_login": user.webLogin,
             "password_plain": password,  # Show once to admin — SAVE THIS!
             "plan": user.plan,
+            "notified_telegram": notified,
         },
     }
 
@@ -491,10 +517,33 @@ async def set_user_password(
         data={"webLogin": web_login, "webPassword": hashed},
     )
 
+    # Send credentials via Telegram if user has a Telegram ID
+    notified = False
+    try:
+        from app.webhook.telegram import send_telegram_message
+
+        dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/")
+        if "/webhook" in dashboard_url:
+            dashboard_url = dashboard_url.split("/webhook")[0]
+
+        msg = (
+            f"🔑 <b>Password Dashboard Kamu Telah Diperbarui!</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📊 Dashboard: <b>{dashboard_url}/login</b>\n\n"
+            f"👤 Username: <code>{web_login}</code>\n"
+            f"🔑 Password: <code>{password}</code>\n\n"
+            f"⚠️ Segera ubah password setelah login!"
+        )
+        await send_telegram_message(uid, msg)
+        notified = True
+    except Exception as e:
+        _logger.warning(f"Failed to send credentials to user {uid}: {e}")
+
     return {
         "success": True,
         "web_login": web_login,
         "password_plain": password,
+        "notified_telegram": notified,
     }
 
 
