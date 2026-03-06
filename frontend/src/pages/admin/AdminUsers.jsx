@@ -6,6 +6,7 @@ import {
     KeyIcon,
     MagnifyingGlassIcon,
     PencilSquareIcon,
+    TrashIcon,
     UserPlusIcon,
     UsersIcon,
     XMarkIcon,
@@ -21,9 +22,11 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const [editUser, setEditUser] = useState(null); // user object to edit
-  const [passwordModal, setPasswordModal] = useState(null); // { userId, password }
+  const [editUser, setEditUser] = useState(null);
+  const [passwordModal, setPasswordModal] = useState(null);
   const [toast, setToast] = useState("");
+  const [selected, setSelected] = useState(new Set());
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -76,7 +79,37 @@ export default function AdminUsers() {
 
   const [generatingCreds, setGeneratingCreds] = useState(false);
 
-  async function handleGenerateMissingCreds() {
+  async function handleGenerateSelectedCreds() {
+    const ids = [...selected];
+    if (ids.length === 0) {
+      showToast("Pilih user terlebih dahulu");
+      return;
+    }
+    if (!confirm(`Generate/kirim kredensial untuk ${ids.length} user terpilih?`)) return;
+    setGeneratingCreds(true);
+    try {
+      const res = await fetch("/admin/api/app-users/generate-selected-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ user_ids: ids }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✅ ${data.count} akun berhasil di-generate dan dikirim!`);
+        setSelected(new Set());
+        fetchUsers();
+      } else {
+        showToast(data.error || "Gagal generate credentials");
+      }
+    } catch {
+      showToast("Gagal generate credentials");
+    } finally {
+      setGeneratingCreds(false);
+    }
+  }
+
+  async function handleGenerateAllMissing() {
     if (!confirm("Generate akun dashboard untuk semua user yang belum punya?\nCredentials akan dikirim via Telegram otomatis.")) return;
     setGeneratingCreds(true);
     try {
@@ -102,6 +135,44 @@ export default function AdminUsers() {
     }
   }
 
+  async function handleDeleteUser(userId) {
+    try {
+      const res = await fetch(`/admin/api/app-users/${userId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(data.message || "User berhasil dihapus");
+        setSelected((prev) => { const s = new Set(prev); s.delete(String(userId)); return s; });
+        fetchUsers();
+      } else {
+        showToast(data.error || "Gagal menghapus user");
+      }
+    } catch {
+      showToast("Gagal menghapus user");
+    } finally {
+      setDeleteConfirm(null);
+    }
+  }
+
+  function toggleSelect(id) {
+    setSelected((prev) => {
+      const s = new Set(prev);
+      if (s.has(String(id))) s.delete(String(id));
+      else s.add(String(id));
+      return s;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === filtered.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map((u) => String(u.id))));
+    }
+  }
+
   const filtered = users.filter(
     (u) =>
       (u.display_name || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -109,8 +180,8 @@ export default function AdminUsers() {
       (u.web_login || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  // Count users without credentials
   const missingCredsCount = users.filter((u) => !u.has_web_access).length;
+  const selectedCount = selected.size;
 
   return (
     <div>
@@ -125,10 +196,20 @@ export default function AdminUsers() {
             <p className="text-sm text-gray-500">{users.length} user terdaftar</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {missingCredsCount > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {selectedCount > 0 && (
             <button
-              onClick={handleGenerateMissingCreds}
+              onClick={handleGenerateSelectedCreds}
+              disabled={generatingCreds}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+            >
+              {generatingCreds ? <Spinner /> : <KeyIcon className="w-4 h-4" />}
+              Generate {selectedCount} Terpilih
+            </button>
+          )}
+          {selectedCount === 0 && missingCredsCount > 0 && (
+            <button
+              onClick={handleGenerateAllMissing}
               disabled={generatingCreds}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
             >
@@ -168,6 +249,14 @@ export default function AdminUsers() {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={filtered.length > 0 && selected.size === filtered.length}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-gray-300 accent-indigo-600"
+                    />
+                  </th>
                   <th className="px-4 py-3 font-medium">User</th>
                   <th className="px-4 py-3 font-medium">Telegram</th>
                   <th className="px-4 py-3 font-medium">Web Login</th>
@@ -178,7 +267,15 @@ export default function AdminUsers() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((u) => (
-                  <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={u.id} className={`hover:bg-gray-50 transition-colors ${selected.has(String(u.id)) ? "bg-indigo-50/50" : ""}`}>
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(String(u.id))}
+                        onChange={() => toggleSelect(u.id)}
+                        className="w-4 h-4 rounded border-gray-300 accent-indigo-600"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div>
                         <p className="text-sm font-semibold text-gray-900">
@@ -201,7 +298,9 @@ export default function AdminUsers() {
                             ? "bg-purple-100 text-purple-700"
                             : u.plan === "pro"
                               ? "bg-orange-100 text-orange-700"
-                              : "bg-gray-100 text-gray-600"
+                              : u.plan === "trial"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-gray-100 text-gray-600"
                           }`}
                       >
                         {u.plan}
@@ -220,18 +319,25 @@ export default function AdminUsers() {
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => setEditUser(u)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
                           title="Edit user"
                         >
                           <PencilSquareIcon className="w-3.5 h-3.5" /> Edit
                         </button>
                         <button
                           onClick={() => handleSetPassword(u.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
                           title="Generate/Reset password web"
                         >
                           <KeyIcon className="w-3.5 h-3.5" />
-                          {u.has_web_access ? "Reset" : "Generate"} Password
+                          {u.has_web_access ? "Reset" : "Generate"}
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(u)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100 transition-colors"
+                          title="Hapus user"
+                        >
+                          <TrashIcon className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -239,7 +345,7 @@ export default function AdminUsers() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-gray-400 text-sm">
+                    <td colSpan={7} className="text-center py-8 text-gray-400 text-sm">
                       Tidak ada user ditemukan
                     </td>
                   </tr>
@@ -289,6 +395,37 @@ export default function AdminUsers() {
           onClose={() => setPasswordModal(null)}
           onCopy={copyToClipboard}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-full bg-rose-100 flex items-center justify-center">
+                <TrashIcon className="w-6 h-6 text-rose-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Hapus User?</h3>
+              <p className="text-sm text-gray-500">
+                User <span className="font-semibold text-gray-700">{deleteConfirm.display_name || deleteConfirm.id}</span> akan dihapus beserta semua data transaksi, subscription, dan kredit AI. Tindakan ini tidak bisa dibatalkan.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="flex-1 py-2.5 border border-gray-200 text-sm font-semibold text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => handleDeleteUser(deleteConfirm.id)}
+                  className="flex-1 py-2.5 bg-rose-600 text-white text-sm font-semibold rounded-lg hover:bg-rose-700 transition-colors"
+                >
+                  Ya, Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast */}

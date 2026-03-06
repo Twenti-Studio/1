@@ -673,6 +673,133 @@ async def generate_missing_credentials(admin: str = Depends(require_admin)):
     }
 
 
+class SelectedUserIdsRequest(BaseModel):
+    user_ids: list[str]
+
+
+@router.post("/app-users/generate-selected-credentials")
+async def generate_selected_credentials(
+    req: SelectedUserIdsRequest,
+    admin: str = Depends(require_admin),
+):
+    """Generate web credentials for selected users and send via Telegram."""
+    import re as _re
+
+    if not req.user_ids:
+        return JSONResponse({"success": False, "error": "No users selected"}, status_code=400)
+
+    dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/")
+    if "/webhook" in dashboard_url:
+        dashboard_url = dashboard_url.split("/webhook")[0]
+
+    results = []
+    for uid_str in req.user_ids:
+        try:
+            uid = int(uid_str)
+        except ValueError:
+            results.append({"user_id": uid_str, "error": "Invalid ID"})
+            continue
+
+        u = await prisma.user.find_unique(where={"id": uid})
+        if not u:
+            results.append({"user_id": uid_str, "error": "Not found"})
+            continue
+
+        try:
+            web_login = u.webLogin
+            if not web_login:
+                base = _re.sub(r"[^a-z0-9]", "", (u.displayName or u.username or f"user{uid}").lower())
+                if len(base) < 3:
+                    base = "user"
+                web_login = base
+                counter = 1
+                while await prisma.user.find_first(where={"webLogin": web_login, "id": {"not": uid}}):
+                    web_login = f"{base}{counter}"
+                    counter += 1
+
+            password = _generate_password()
+            hashed = _hash_password(password)
+
+            await prisma.user.update(
+                where={"id": uid},
+                data={"webLogin": web_login, "webPassword": hashed},
+            )
+
+            notified = False
+            try:
+                from app.webhook.telegram import send_telegram_message
+
+                msg = (
+                    f"🎉 <b>Akun Dashboard FiNot Kamu Sudah Siap!</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"📊 Dashboard: <b>{dashboard_url}/login</b>\n\n"
+                    f"👤 Username: <code>{web_login}</code>\n"
+                    f"🔑 Password: <code>{password}</code>\n\n"
+                    f"Paket: <b>{(u.plan or 'free').upper()}</b>\n\n"
+                    f"⚠️ Segera ubah password setelah login!\n"
+                    f"Ketik /help untuk bantuan."
+                )
+                await send_telegram_message(uid, msg)
+                notified = True
+            except Exception as e:
+                _logger.warning(f"Failed to send credentials to user {uid}: {e}")
+
+            results.append({
+                "user_id": uid_str,
+                "display_name": u.displayName or u.username or "-",
+                "web_login": web_login,
+                "notified": notified,
+            })
+        except Exception as e:
+            _logger.error(f"Failed to generate credentials for user {uid}: {e}")
+            results.append({"user_id": uid_str, "error": str(e)})
+
+    success_count = len([r for r in results if "error" not in r])
+    return {"success": True, "count": success_count, "results": results}
+
+
+@router.delete("/app-users/{user_id}")
+async def delete_app_user(
+    user_id: str,
+    admin: str = Depends(require_admin),
+):
+    """Delete an app user and all related data."""
+    try:
+        uid = int(user_id)
+    except ValueError:
+        return JSONResponse({"success": False, "error": "Invalid user ID"}, status_code=400)
+
+    user = await prisma.user.find_unique(where={"id": uid})
+    if not user:
+        return JSONResponse({"success": False, "error": "User not found"}, status_code=404)
+
+    # Delete related records first (cascade manually)
+    try:
+        await prisma.transaction.delete_many(where={"userId": uid})
+    except Exception:
+        pass
+    try:
+        await prisma.aicredit.delete_many(where={"userId": uid})
+    except Exception:
+        pass
+    try:
+        await prisma.subscription.delete_many(where={"userId": uid})
+    except Exception:
+        pass
+    try:
+        await prisma.payment.delete_many(where={"userId": uid})
+    except Exception:
+        pass
+    try:
+        await prisma.report.delete_many(where={"userId": uid})
+    except Exception:
+        pass
+
+    await prisma.user.delete(where={"id": uid})
+
+    return {"success": True, "message": f"User {user.displayName or uid} berhasil dihapus"}
+
+
 # ─── Reports Management ──────────────────────────────────
 
 
