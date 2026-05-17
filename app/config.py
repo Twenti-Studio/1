@@ -10,7 +10,7 @@ from typing import Literal
 if not os.getenv("RAILWAY_ENVIRONMENT"):
     from dotenv import load_dotenv
     load_dotenv()
-    print("📄 Loaded .env file")
+    print("Loaded .env file")
 
 DEPLOYMENT_ENV: Literal["railway", "vps", "docker", "development"] = os.getenv(
     "DEPLOYMENT_ENV", "development"
@@ -229,7 +229,7 @@ logging.basicConfig(
 
 # ── Startup banner ─────────────────────────
 print("=" * 60)
-print("🧠 Starting FiNot - AI Financial Assistant")
+print("Starting FiNot - AI Financial Assistant")
 print(f"   Environment: {DEPLOYMENT_ENV}")
 print(f"   OpenAI Model: {OPENAI_MODEL}")
 print(f"   Log Level: {LOG_LEVEL}")
@@ -237,10 +237,10 @@ print(f"   Railway Mode: {IS_RAILWAY}")
 print("=" * 60)
 
 if not BOT_TOKEN:
-    raise ValueError("❌ BOT_TOKEN tidak ditemukan!")
+    raise ValueError("BOT_TOKEN tidak ditemukan!")
 if not OPENAI_API_KEY:
-    raise ValueError("❌ OPENAI_API_KEY tidak ditemukan!")
+    raise ValueError("OPENAI_API_KEY tidak ditemukan!")
 if not DATABASE_URL:
-    raise ValueError("❌ DATABASE_URL tidak ditemukan!")
+    raise ValueError("DATABASE_URL tidak ditemukan!")
 
-print("✅ Configuration validated")
+print("Configuration validated")

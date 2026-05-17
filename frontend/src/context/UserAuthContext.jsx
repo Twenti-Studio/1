@@ -7,8 +7,10 @@ export function UserAuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const checkAuth = useCallback(async () => {
-    // Only auto-check session on dashboard pages to avoid 401 noise on landing/pricing
-    if (!window.location.pathname.startsWith("/dashboard")) {
+    // Only auto-check session on authenticated routes to avoid 401 noise on landing/pricing
+    const path = window.location.pathname;
+    const authedRoute = path.startsWith("/dashboard") || path.startsWith("/chat");
+    if (!authedRoute) {
       setLoading(false);
       return;
     }
@@ -47,7 +49,7 @@ export function UserAuthProvider({ children }) {
       }
       if (data.success) {
         setUser(data.user);
-        return { success: true };
+        return { success: true, user: data.user };
       }
       return { success: false, error: data.error || "Login gagal" };
     } catch {

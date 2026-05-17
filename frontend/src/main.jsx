@@ -6,6 +6,13 @@ import { SiteSettingsProvider } from "./context/SiteSettingsContext";
 import { UserAuthProvider } from "./context/UserAuthContext";
 import "./index.css";
 
+// Register service worker for PWA install on /chat
+if ("serviceWorker" in navigator && window.location.protocol === "https:") {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => { /* ignore */ });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>

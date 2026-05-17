@@ -22,6 +22,7 @@ from app.webhook.trakteer import router as trakteer_router
 from app.routers.admin import router as admin_router
 from app.routers.landing_api import router as landing_api_router
 from app.routers.user_dashboard import router as user_dashboard_router
+from app.routers.chat import router as chat_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -321,6 +322,7 @@ app.include_router(trakteer_router)
 app.include_router(admin_router)
 app.include_router(landing_api_router)
 app.include_router(user_dashboard_router)
+app.include_router(chat_router)
 
 # Templates removed — admin dashboard is now part of the React SPA
 

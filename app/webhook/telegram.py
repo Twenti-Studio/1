@@ -12,11 +12,19 @@ import logging
 import asyncio
 import json
 import qrcode
+import re
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
 from app.config import BOT_TOKEN, TELEGRAM_API_URL, PLAN_CONFIG, TRAKTEER_PAGE_URL
 from app.db import prisma
-from app.services.user_service import get_or_create_user
+from app.services.user_service import (
+    ensure_web_credentials,
+    get_missing_onboarding_field,
+    get_or_create_user,
+    get_user_by_id,
+    is_onboarding_complete,
+    update_onboarding_profile,
+)
 from app.services.media_service import download_telegram_media
 from app.services.receipt_service import create_receipt
 from app.services.subscription_service import (
@@ -43,6 +51,20 @@ TELEGRAM_DELETE_MSG_URL = f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/deleteMessage"
 import time as _time
 _pending_analysis: dict[int, dict] = {}
 _PENDING_ANALYSIS_TTL = 300  # 5 minutes
+
+_ONBOARDING_FIELD_LABELS = {
+    "fullName": "nama",
+    "occupation": "pekerjaan",
+    "fixedIncome": "gaji tetap per bulan",
+    "monthlyDependents": "total tanggungan per bulan",
+}
+
+_ONBOARDING_PROMPTS = {
+    "fullName": "Sebelum mulai, isi profil dulu.\n\nKetik nama lengkap kamu:",
+    "occupation": "Ketik pekerjaan kamu:",
+    "fixedIncome": "Ketik gaji tetap per bulan.\nContoh: 5000000 atau 5jt",
+    "monthlyDependents": "Ketik total tanggungan per bulan.\nContoh: 2500000 atau 2,5jt",
+}
 
 # ── Post-transaction feature registry ──
 # Each entry: (feature_key, label, credit_cost)
@@ -85,11 +107,7 @@ async def _build_post_tx_menu(user_id: int):
     lines.append("\n<i>Atau lanjut kirim transaksi baru.</i>")
     return "\n".join(lines), choices
 
-
-# ═══════════════════════════════════════════
 # HELPER: Send Telegram Messages
-# ═══════════════════════════════════════════
-
 async def send_telegram_message(
     chat_id: int,
     text: str,
@@ -213,6 +231,124 @@ async def answer_callback_query(
         return False
 
 
+def _parse_rupiah_amount(text: str) -> int | None:
+    """Parse common Indonesian money inputs such as 5000000, 5jt, 2,5 juta."""
+    raw = text.strip().lower()
+    if not raw:
+        return None
+
+    multiplier = 1
+    if re.search(r"\b(jt|juta)\b", raw) or raw.endswith("jt"):
+        multiplier = 1_000_000
+    elif re.search(r"\b(rb|ribu|k)\b", raw) or raw.endswith(("rb", "k")):
+        multiplier = 1_000
+
+    cleaned = (
+        raw.replace("rupiah", "")
+        .replace("rp", "")
+        .replace("juta", "")
+        .replace("jt", "")
+        .replace("ribu", "")
+        .replace("rb", "")
+        .replace("k", "")
+        .strip()
+    )
+
+    match = re.search(r"\d+(?:[.,]\d+)*", cleaned)
+    if not match:
+        return None
+
+    number_text = match.group(0)
+    if multiplier > 1:
+        number_text = number_text.replace(",", ".")
+        try:
+            return int(float(number_text) * multiplier)
+        except ValueError:
+            return None
+
+    digits = re.sub(r"\D", "", number_text)
+    if not digits:
+        return None
+
+    return int(digits)
+
+
+def _format_rupiah(amount: int | None) -> str:
+    return f"Rp{amount or 0:,}".replace(",", ".")
+
+
+def _format_onboarding_summary(user) -> str:
+    return (
+        "<b>Profil awal tersimpan.</b>\n\n"
+        f"Nama: <b>{getattr(user, 'fullName', '-')}</b>\n"
+        f"Pekerjaan: <b>{getattr(user, 'occupation', '-')}</b>\n"
+        f"Gaji tetap: <b>{_format_rupiah(getattr(user, 'fixedIncome', 0))}</b>/bulan\n"
+        f"Tanggungan: <b>{_format_rupiah(getattr(user, 'monthlyDependents', 0))}</b>/bulan\n\n"
+        "Sekarang kamu bisa catat transaksi, kirim struk, voice note, atau pakai menu lain."
+    )
+
+
+async def _send_onboarding_prompt(chat_id: int, user) -> None:
+    missing_field = get_missing_onboarding_field(user)
+    if not missing_field:
+        return
+
+    await send_telegram_message(chat_id, _ONBOARDING_PROMPTS[missing_field])
+
+
+async def _handle_onboarding_message(chat_id: int, user_id: int, message: dict) -> bool:
+    """
+    Returns True when onboarding is complete and the message may continue to normal routing.
+    Returns False when the message was used for onboarding or blocked.
+    """
+    user = await get_user_by_id(prisma, user_id)
+    if not user:
+        await send_telegram_message(chat_id, "Akun belum siap. Silakan kirim /start lagi.")
+        return False
+
+    if is_onboarding_complete(user):
+        return True
+
+    text = (message.get("text") or "").strip()
+    missing_field = get_missing_onboarding_field(user)
+
+    if not text or text.startswith("/"):
+        await _send_onboarding_prompt(chat_id, user)
+        return False
+
+    data = {}
+    if missing_field in ("fullName", "occupation"):
+        if len(text) < 2:
+            label = _ONBOARDING_FIELD_LABELS[missing_field]
+            await send_telegram_message(chat_id, f"{label.capitalize()} terlalu pendek. Coba ketik lagi.")
+            return False
+        data[missing_field] = text[:120]
+        if missing_field == "fullName":
+            data["displayName"] = text[:120]
+    else:
+        amount = _parse_rupiah_amount(text)
+        if amount is None or amount < 0:
+            label = _ONBOARDING_FIELD_LABELS[missing_field]
+            await send_telegram_message(
+                chat_id,
+                f"Nominal {label} belum terbaca. Contoh: 5000000 atau 5jt",
+            )
+            return False
+        data[missing_field] = amount
+
+    updated_user = await update_onboarding_profile(prisma, user_id, data)
+    if not updated_user:
+        await send_telegram_message(chat_id, "Gagal menyimpan profil. Silakan coba lagi.")
+        return False
+
+    if is_onboarding_complete(updated_user):
+        await send_telegram_message(chat_id, _format_onboarding_summary(updated_user))
+        return False
+
+    await _send_onboarding_prompt(chat_id, updated_user)
+    return False
+
+
 async def edit_telegram_message(
     chat_id: int,
     message_id: int,
@@ -258,11 +394,7 @@ async def delete_telegram_message(chat_id: int, message_id: int) -> bool:
         logger.error(f"Failed to delete message: {e}")
         return False
 
-
-# ═══════════════════════════════════════════
 # FORMAT HELPERS
-# ═══════════════════════════════════════════
-
 def format_transaction_response(result: dict) -> str:
     """Format transaction processing result into user-friendly message."""
     if not result.get("success"):
@@ -430,11 +562,7 @@ Kirim pesan seperti:
 /help - Tampilkan bantuan ini
 """
 
-
-# ═══════════════════════════════════════════
 # RBAC MIDDLEWARE
-# ═══════════════════════════════════════════
-
 async def check_credits_and_consume(user_id: int, feature: str = None, amount: int = None) -> dict:
     """
     Check and consume AI credit before processing.
@@ -489,11 +617,7 @@ async def check_credits_and_consume(user_id: int, feature: str = None, amount: i
 
     return {"allowed": True, "credits_remaining": credits["remaining"] - amount, "cost": amount}
 
-
-# ═══════════════════════════════════════════
 # MAIN WEBHOOK HANDLER
-# ═══════════════════════════════════════════
-
 @router.post("/telegram")
 async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
     """Handle incoming Telegram webhook updates."""
@@ -553,6 +677,9 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
 async def _handle_update(chat_id: int, user_id: int, message: dict):
     """Route message to appropriate handler."""
     try:
+        if not await _handle_onboarding_message(chat_id, user_id, message):
+            return
+
         # Check for command
         text = message.get("text", "")
 
@@ -596,11 +723,7 @@ async def _handle_update(chat_id: int, user_id: int, message: dict):
             "Terjadi kesalahan. Silakan coba lagi."
         )
 
-
-# ═══════════════════════════════════════════
 # COMMAND HANDLERS
-# ═══════════════════════════════════════════
-
 async def _handle_command(chat_id: int, user_id: int, text: str):
     """Handle /commands."""
     parts = text.strip().split()
@@ -609,6 +732,11 @@ async def _handle_command(chat_id: int, user_id: int, text: str):
 
     if command in ("/start", "/help"):
         await send_telegram_message(chat_id, format_help_message())
+        if command == "/start":
+            await _send_web_credentials(chat_id, user_id)
+
+    elif command == "/web":
+        await _send_web_credentials(chat_id, user_id, force_show_username=True)
 
     elif command == "/status":
         status = await get_subscription_status(user_id)
@@ -703,6 +831,64 @@ async def _handle_command(chat_id: int, user_id: int, text: str):
         )
 
 
+def _dashboard_base_url() -> str:
+    """Derive the dashboard base URL from WEBHOOK_URL (strips /webhook/telegram)."""
+    raw = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio")
+    base = raw.rstrip("/")
+    if base.endswith("/webhook/telegram"):
+        base = base[: -len("/webhook/telegram")]
+    return base.rstrip("/")
+
+
+async def _send_web_credentials(
+    chat_id: int, user_id: int, force_show_username: bool = False,
+):
+    """
+    Ensure the user has webLogin/webPassword and send the chat-app link.
+
+    - First time: generate creds, show username + password (shown once).
+    - Otherwise: show login link + username, hint to use /web for username.
+    """
+    try:
+        result = await ensure_web_credentials(prisma, user_id)
+        dashboard = _dashboard_base_url()
+        chat_url = f"{dashboard}/chat"
+        login_url = f"{dashboard}/login"
+
+        if result:
+            login, password = result
+            await send_telegram_message(
+                chat_id,
+                f"🌐 <b>Akun Chat-App FiNot</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Sekarang kamu juga bisa pakai FiNot langsung di browser "
+                f"(tanpa harus lewat Telegram).\n\n"
+                f"🔗 <b>{chat_url}</b>\n"
+                f"Login di: {login_url}\n\n"
+                f"Username: <code>{login}</code>\n"
+                f"Password: <code>{password}</code>\n\n"
+                f"⚠️ Simpan password ini — tidak akan ditampilkan lagi.\n"
+                f"Bisa diubah di Pengaturan setelah login."
+            )
+            return
+
+        # Already had credentials — just send the link
+        user = await get_user_by_id(prisma, user_id)
+        username = (user.webLogin if user else None) or "—"
+        if force_show_username:
+            await send_telegram_message(
+                chat_id,
+                f"🌐 <b>Chat-App FiNot</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🔗 {chat_url}\n"
+                f"Login: {login_url}\n\n"
+                f"Username: <code>{username}</code>\n"
+                f"<i>Password kamu sendiri yang tahu. Lupa? Reset di Pengaturan dashboard.</i>"
+            )
+    except Exception as e:
+        logger.warning(f"Failed to send web credentials to user {user_id}: {e}")
+
+
 async def _handle_upgrade_command(chat_id: int, user_id: int):
     """Handle /upgrade or /buy — show plan list with inline buttons."""
     text = format_upgrade_menu()
@@ -719,11 +905,7 @@ async def _handle_upgrade_command(chat_id: int, user_id: int):
 
     await send_telegram_message(chat_id, text, reply_markup=reply_markup)
 
-
-# ═══════════════════════════════════════════
 # CALLBACK QUERY HANDLER (Inline Button Clicks)
-# ═══════════════════════════════════════════
-
 async def _handle_callback_query(
     cb_id: str, chat_id: int, user_id: int, message_id: int, cb_data: str,
 ):
@@ -731,6 +913,11 @@ async def _handle_callback_query(
     try:
         # Answer callback to remove loading state
         await answer_callback_query(cb_id)
+
+        user = await get_user_by_id(prisma, user_id)
+        if user and not is_onboarding_complete(user):
+            await _send_onboarding_prompt(chat_id, user)
+            return
 
         # Parse callback data (format: "action:value")
         parts = cb_data.split(":", 1)
@@ -1349,11 +1536,7 @@ async def _handle_analysis_command(chat_id: int, user_id: int, args: list):
             logger.error(f"Error in weekly analysis: {e}", exc_info=True)
             await send_telegram_message(chat_id, "Gagal menganalisis.")
 
-
-# ═══════════════════════════════════════════
 # AI FEATURE COMMAND HANDLERS
-# ═══════════════════════════════════════════
-
 async def _handle_forecast_command(chat_id: int, user_id: int):
     """#14 Forecast Keuangan 3 Bulan (Elite)."""
     access = await check_credits_and_consume(user_id, feature="forecast_3month")
@@ -1967,11 +2150,7 @@ async def _handle_chat_command(chat_id: int, user_id: int, args: list):
         await send_telegram_message(chat_id, "Gagal memproses pertanyaan.")
 
 
-
-# ═══════════════════════════════════════════
 # MESSAGE HANDLERS
-# ═══════════════════════════════════════════
-
 async def _handle_text(chat_id: int, user_id: int, text: str):
     """Handle text messages - classify intent then route."""
     try:
@@ -2043,7 +2222,7 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
             status = await get_subscription_status(user_id)
             await send_telegram_message(chat_id, format_subscription_status(status))
 
-        # ── New AI feature intents ──
+        # New AI feature intents 
         elif intent == UserIntent.ANOMALY:
             await _handle_anomaly_command(chat_id, user_id)
 

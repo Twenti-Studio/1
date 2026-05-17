@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AdminLayout from "./components/AdminLayout";
+import ChatLayout from "./components/ChatLayout";
 import DashboardLayout from "./components/DashboardLayout";
 import Layout from "./components/Layout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -10,6 +11,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminVouchers from "./pages/admin/AdminVouchers";
 import CashflowPage from "./pages/dashboard/CashflowPage";
+import ChatPage from "./pages/dashboard/ChatPage";
 import InsightPage from "./pages/dashboard/InsightPage";
 import ReportPage from "./pages/dashboard/ReportPage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
@@ -40,6 +42,11 @@ export default function App() {
 
       {/* User Login */}
       <Route path="login" element={<UserLogin />} />
+
+      {/* FiNot Chat App — standalone, full-screen, PWA */}
+      <Route path="chat" element={<ChatLayout />}>
+        <Route index element={<ChatPage />} />
+      </Route>
 
       {/* User Dashboard (Protected by DashboardLayout) */}
       <Route path="dashboard" element={<DashboardLayout />}>

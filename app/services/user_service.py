@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Tuple
 
 from prisma import Prisma
 from prisma.models import User
@@ -89,6 +89,48 @@ async def update_user(
         raise
 
 
+def get_missing_onboarding_field(user: User) -> Optional[str]:
+    """Return the first required onboarding field that is still empty."""
+    required_fields = (
+        "fullName",
+        "occupation",
+        "fixedIncome",
+        "monthlyDependents",
+    )
+
+    for field in required_fields:
+        value = getattr(user, field, None)
+        if value is None or value == "":
+            return field
+
+    return None
+
+
+def is_onboarding_complete(user: User) -> bool:
+    """Check whether the user's required onboarding profile is complete."""
+    return get_missing_onboarding_field(user) is None
+
+
+async def update_onboarding_profile(
+    prisma: Prisma,
+    user_id: int,
+    data: dict,
+) -> Optional[User]:
+    """Update required onboarding data and mark completed when all fields exist."""
+    user = await update_user(prisma, user_id, data)
+    if not user:
+        return None
+
+    if is_onboarding_complete(user) and not getattr(user, "onboardingCompletedAt", None):
+        user = await update_user(
+            prisma,
+            user_id,
+            {"onboardingCompletedAt": datetime.now(timezone.utc)},
+        )
+
+    return user
+
+
 async def get_user_by_id(
     prisma: Prisma,
     user_id: int,
@@ -115,6 +157,44 @@ async def user_exists(prisma: Prisma, user_id: int) -> bool:
     """Check if user exists."""
     user = await get_user_by_id(prisma, user_id)
     return user is not None
+
+
+async def ensure_web_credentials(
+    prisma: Prisma, user_id: int
+) -> Optional[Tuple[str, str]]:
+    """
+    Ensure the user has webLogin/webPassword for the chat-app dashboard.
+
+    - If already set: returns None (no new credentials to surface).
+    - If missing: generate readable login + 10-char password, store hashed,
+      and return (login, plain_password) so the caller can show it ONCE.
+    """
+    from app.services.payment_service import (
+        _generate_password,
+        _generate_readable_login,
+        _hash_pw,
+    )
+
+    user = await prisma.user.find_unique(where={"id": user_id})
+    if not user:
+        return None
+    if user.webLogin:
+        return None
+
+    base = _generate_readable_login(user.displayName or user.username or f"user{user_id}")
+    login = base
+    counter = 1
+    while await prisma.user.find_first(where={"webLogin": login}):
+        login = f"{base}{counter}"
+        counter += 1
+
+    plain = _generate_password()
+    await prisma.user.update(
+        where={"id": user_id},
+        data={"webLogin": login, "webPassword": _hash_pw(plain)},
+    )
+    _logger.info(f"Web credentials auto-generated for user {user_id}: {login}")
+    return login, plain
 
 
 async def get_user_stats(prisma: Prisma, user_id: int) -> dict:

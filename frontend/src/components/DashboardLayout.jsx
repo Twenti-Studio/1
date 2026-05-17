@@ -2,6 +2,7 @@ import {
   ArrowRightStartOnRectangleIcon,
   CalculatorIcon,
   ChartBarIcon,
+  ChatBubbleLeftRightIcon,
   ChevronDownIcon,
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
@@ -18,6 +19,7 @@ import Logo from "./Logo";
 // Main nav items (shown in bottom bar + desktop nav)
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Home", icon: HomeIcon, end: true },
+  { to: "/chat", label: "Chat", icon: ChatBubbleLeftRightIcon },
   { to: "/dashboard/cashflow", label: "Cashflow", icon: ChartBarIcon },
   { to: "/dashboard/simulasi", label: "Simulasi", icon: CalculatorIcon },
   { to: "/dashboard/transaksi", label: "Transaksi", icon: ClipboardDocumentListIcon },
@@ -84,21 +86,28 @@ export default function DashboardLayout() {
     return <Navigate to="/login" replace />;
   }
 
-  // Gate: only pro/elite can access dashboard
+  // Gate: free users only get Chat (a separate route). Dashboard pages need Pro/Elite.
   if (user.plan === "free") {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center p-6">
         <div className="max-w-md w-full text-center space-y-5">
           <Logo className="h-12 w-auto mx-auto" />
-          <h1 className="text-2xl font-bold text-white">Akses Terbatas</h1>
+          <h1 className="text-2xl font-bold text-white">Fitur Premium</h1>
           <p className="text-white/50 text-sm leading-relaxed">
-            Dashboard hanya tersedia untuk pengguna <span className="text-orange font-semibold">Pro</span> dan{" "}
-            <span className="text-orange font-semibold">Elite</span>. Upgrade sekarang untuk mengakses semua fitur analisis keuangan.
+            Halaman ini hanya tersedia untuk pengguna <span className="text-orange font-semibold">Pro</span> dan{" "}
+            <span className="text-orange font-semibold">Elite</span>. Kamu tetap bisa pakai{" "}
+            <span className="text-orange font-semibold">Chat FiNot</span> di paket Free.
           </p>
           <div className="flex flex-col gap-3">
             <a
-              href="/pricing"
+              href="/chat"
               className="px-6 py-3 bg-orange text-white font-semibold rounded-xl hover:bg-orange-dark transition-colors"
+            >
+              Buka Chat FiNot
+            </a>
+            <a
+              href="/pricing"
+              className="text-sm text-white/60 hover:text-white transition-colors"
             >
               Lihat Paket Harga
             </a>

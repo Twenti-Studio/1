@@ -10,3 +10,7 @@ dist/
 build/
 static/landing/
 .prisma/
+server-local-test*.log
+
+.venv/
+.claude/
