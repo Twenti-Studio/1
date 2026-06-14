@@ -45,85 +45,90 @@ const FAQS = [
   },
 ];
 
+function Eyebrow({ children }) {
+  return (
+    <span className="inline-flex items-center gap-2 font-mono text-[0.65rem] tracking-[0.22em] uppercase text-fog">
+      <span className="h-px w-6 bg-moss" />
+      {children}
+    </span>
+  );
+}
+
 export default function Faq() {
   const [openIdx, setOpenIdx] = useState(null);
 
   return (
     <div>
       {/* Header */}
-      <section className="relative overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-navy-light/15 rounded-full blur-[100px] pointer-events-none" />
-        <div className="max-w-5xl mx-auto px-6 pt-16 pb-10 text-center space-y-4">
-          {/* <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white/70 text-xs font-semibold">
-            <HelpCircle size={14} /> FAQ
-          </span> */}
-          <h1 className="text-3xl lg:text-4xl font-bold">
-            Pertanyaan yang{" "}
-            <span className="text-white">
-              Sering Ditanyakan
-            </span>
-          </h1>
-          <p className="text-white/50 max-w-xl mx-auto">
-            Jawaban untuk hal-hal yang paling sering ditanyakan pengguna FiNot. Belum menemukan
-            jawabanmu? Hubungi kami langsung.
-          </p>
+      <section className="max-w-5xl mx-auto px-6 pt-16 pb-12 text-center space-y-5">
+        <div className="flex justify-center">
+          <Eyebrow>Pertanyaan umum</Eyebrow>
         </div>
+        <h1 className="font-display text-4xl lg:text-5xl font-semibold text-cream leading-tight">
+          Yang sering <span className="text-credit">ditanyakan.</span>
+        </h1>
+        <p className="text-fog max-w-xl mx-auto leading-relaxed">
+          Jawaban untuk hal-hal yang paling sering ditanyakan pengguna FiNot. Belum
+          menemukan jawabanmu? Langsung chat ke FiNot.
+        </p>
       </section>
 
-      {/* FAQ Accordion */}
+      {/* Accordion */}
       <section className="max-w-3xl mx-auto px-6 pb-16">
-        <div className="space-y-3">
-          {FAQS.map((faq, idx) => (
-            <div
-              key={idx}
-              className={`bg-card border rounded-2xl overflow-hidden transition-colors ${
-                openIdx === idx ? "border-white/20" : "border-border"
-              }`}
-            >
-              <button
-                onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
-                className="flex items-center justify-between w-full px-5 py-4 text-left"
-              >
-                <span className="font-semibold text-sm pr-4">{faq.q}</span>
-                <ChevronDownIcon
-                  className={`w-4.5 h-4.5 text-white/40 shrink-0 transition-transform duration-300 ${
-                    openIdx === idx ? "rotate-180 text-white" : ""
-                  }`}
-                />
-              </button>
-              <div
-                className={`overflow-hidden transition-all duration-300 ${
-                  openIdx === idx ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-                }`}
-              >
-                <div className="px-5 pb-4">
-                  <p className="text-sm text-white/50 leading-relaxed">{faq.a}</p>
+        <div className="border-t border-ledger-line">
+          {FAQS.map((faq, idx) => {
+            const open = openIdx === idx;
+            return (
+              <div key={idx} className="border-b border-ledger-line">
+                <button
+                  onClick={() => setOpenIdx(open ? null : idx)}
+                  className="flex items-center gap-4 w-full py-4 text-left group"
+                  aria-expanded={open}
+                >
+                  <span className="font-mono text-[0.7rem] text-credit tnum pt-0.5 shrink-0">
+                    {String(idx + 1).padStart(2, "0")}
+                  </span>
+                  <span className={`flex-1 font-medium text-[0.95rem] transition-colors ${open ? "text-cream" : "text-cream/85 group-hover:text-cream"}`}>
+                    {faq.q}
+                  </span>
+                  <ChevronDownIcon
+                    className={`w-4 h-4 text-fog shrink-0 transition-transform duration-300 ${open ? "rotate-180 text-credit" : ""}`}
+                  />
+                </button>
+                <div
+                  className={`overflow-hidden transition-all duration-300 ${open ? "max-h-[30rem] opacity-100" : "max-h-0 opacity-0"}`}
+                >
+                  <p className="text-sm text-fog leading-relaxed pb-5 pl-9 pr-6">{faq.a}</p>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="border-t border-border bg-navy-dark/40 text-center py-16 px-6">
-        <h2 className="text-2xl font-bold mb-3">Masih Punya Pertanyaan?</h2>
-        <p className="text-white/50 mb-6 max-w-md mx-auto">
-          Langsung chat ke FiNot — AI kami siap menjawab pertanyaanmu 24/7.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            to="/register"
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
-          >
-            Mulai Gratis Sekarang
-          </Link>
-          <Link
-            to="/pricing"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-white/60 hover:text-white font-medium text-sm transition-colors"
-          >
-            Lihat Paket Harga
-          </Link>
+      <section className="max-w-6xl mx-auto px-6 pb-20">
+        <div className="bg-ink-soft border border-moss/40 rounded-3xl px-8 py-12 text-center space-y-4">
+          <h2 className="font-display text-2xl lg:text-3xl font-semibold text-cream">
+            Masih punya pertanyaan?
+          </h2>
+          <p className="text-fog max-w-md mx-auto leading-relaxed">
+            Langsung chat ke FiNot — AI kami siap menjawab 24/7.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-1">
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-orange text-white font-semibold shadow-lg shadow-black/30 hover:bg-orange-dark hover:-translate-y-0.5 transition-all"
+            >
+              Mulai gratis sekarang
+            </Link>
+            <Link
+              to="/pricing"
+              className="inline-flex items-center gap-1.5 px-5 py-3.5 text-fog hover:text-cream font-medium transition-colors"
+            >
+              Lihat paket harga →
+            </Link>
+          </div>
         </div>
       </section>
     </div>

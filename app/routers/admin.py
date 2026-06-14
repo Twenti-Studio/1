@@ -390,7 +390,7 @@ async def create_app_user(
         try:
             from app.webhook.telegram import send_telegram_message
 
-            dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/")
+            dashboard_url = os.getenv("WEBHOOK_URL", "https://fi-note.app").rstrip("/")
             if "/webhook" in dashboard_url:
                 dashboard_url = dashboard_url.split("/webhook")[0]
 
@@ -529,7 +529,7 @@ async def set_user_password(
     try:
         from app.webhook.telegram import send_telegram_message
 
-        dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/")
+        dashboard_url = os.getenv("WEBHOOK_URL", "https://fi-note.app").rstrip("/")
         if "/webhook" in dashboard_url:
             dashboard_url = dashboard_url.split("/webhook")[0]
 
@@ -582,7 +582,7 @@ async def generate_missing_credentials(admin: str = Depends(require_admin)):
         return {"success": True, "message": "Semua user sudah punya akun dashboard!", "count": 0}
 
     results = []
-    dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/")
+    dashboard_url = os.getenv("WEBHOOK_URL", "https://fi-note.app").rstrip("/")
     # Clean up URL for dashboard
     if "/webhook" in dashboard_url:
         dashboard_url = dashboard_url.split("/webhook")[0]
@@ -697,7 +697,7 @@ async def generate_selected_credentials(
     if not req.user_ids:
         return JSONResponse({"success": False, "error": "No users selected"}, status_code=400)
 
-    dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/")
+    dashboard_url = os.getenv("WEBHOOK_URL", "https://fi-note.app").rstrip("/")
     if "/webhook" in dashboard_url:
         dashboard_url = dashboard_url.split("/webhook")[0]
 

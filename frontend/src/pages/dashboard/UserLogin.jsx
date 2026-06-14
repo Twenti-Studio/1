@@ -63,35 +63,36 @@ export default function UserLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+    <div className="min-h-screen bg-ink text-cream flex items-center justify-center p-4 font-sans">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center gap-2 mb-8">
-          <Logo className="h-10 w-auto" />
-          <span className="text-2xl font-bold text-white">FiNot</span>
+          <Logo className="h-10 w-auto" glow />
+          <span className="text-2xl font-display font-semibold text-cream">FiNot</span>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-6 sm:p-8">
+        <div className="bg-ink-soft border border-ledger-line rounded-2xl p-6 sm:p-8">
           <div className="text-center mb-6">
-            <h1 className="text-xl font-bold text-white">Masuk</h1>
-            <p className="text-sm text-white/40 mt-1">
-              Masuk untuk melihat dashboard keuanganmu
+            <span className="font-mono text-[0.6rem] tracking-[0.22em] uppercase text-fog">Akun · Masuk</span>
+            <h1 className="text-xl font-display font-semibold text-cream mt-2">Masuk ke buku besarmu</h1>
+            <p className="text-sm text-fog mt-1">
+              Lanjutkan mencatat dan lihat insight keuanganmu.
             </p>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-sm text-rose-400 text-center">
+            <div className="mb-4 p-3 bg-debit/10 border border-debit/30 rounded-lg text-sm text-debit text-center">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-white/50 mb-1.5">Username</label>
+              <label className="block font-mono text-[0.65rem] uppercase tracking-[0.12em] text-fog mb-1.5">Username</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3 py-2.5 bg-white/5 border border-border rounded-lg text-sm text-white placeholder-white/25 focus:outline-none focus:ring-1 focus:ring-orange/50 focus:border-orange/50"
+                className="w-full px-3 py-2.5 bg-ink border border-ledger-line rounded-lg text-sm text-cream placeholder-fog/40 focus:outline-none focus:ring-2 focus:ring-moss/20 focus:border-moss"
                 placeholder="Masukkan username"
                 required
                 autoFocus
@@ -99,20 +100,20 @@ export default function UserLogin() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-white/50 mb-1.5">Password</label>
+              <label className="block font-mono text-[0.65rem] uppercase tracking-[0.12em] text-fog mb-1.5">Password</label>
               <div className="relative">
                 <input
                   type={showPw ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2.5 pr-10 bg-white/5 border border-border rounded-lg text-sm text-white placeholder-white/25 focus:outline-none focus:ring-1 focus:ring-orange/50 focus:border-orange/50"
+                  className="w-full px-3 py-2.5 pr-10 bg-ink border border-ledger-line rounded-lg text-sm text-cream placeholder-fog/40 focus:outline-none focus:ring-2 focus:ring-moss/20 focus:border-moss"
                   placeholder="Masukkan password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-fog hover:text-cream"
                 >
                   {showPw ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                 </button>
@@ -134,19 +135,19 @@ export default function UserLogin() {
           <button
             type="button"
             onClick={() => { setForgotOpen(true); setForgotUser(username); setForgotMsg(null); }}
-            className="mt-3 w-full text-center text-xs text-white/50 hover:text-orange transition-colors"
+            className="mt-3 w-full text-center text-xs text-fog hover:text-credit transition-colors"
           >
             Lupa password?
           </button>
 
           <div className="mt-6 text-center">
-            <p className="text-xs text-white/30">
+            <p className="text-xs text-fog">
               Belum punya akun?{" "}
-              <a href="/register" className="text-orange hover:underline">
+              <a href="/register" className="text-credit hover:underline">
                 Daftar gratis
               </a>{" "}
               atau{" "}
-              <a href="/pricing" className="text-orange hover:underline">
+              <a href="/pricing" className="text-credit hover:underline">
                 berlangganan
               </a>.
             </p>
@@ -154,8 +155,8 @@ export default function UserLogin() {
         </div>
 
         <div className="text-center mt-4">
-          <a href="/" className="text-xs text-white/30 hover:text-white/50 transition-colors">
-            &larr; Kembali ke Beranda
+          <a href="/" className="font-mono text-[0.7rem] text-fog/70 hover:text-cream transition-colors">
+            ← Kembali ke Beranda
           </a>
         </div>
       </div>
@@ -166,19 +167,19 @@ export default function UserLogin() {
           onClick={() => setForgotOpen(false)}
         >
           <div
-            className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm"
+            className="bg-ink-soft border border-moss/40 rounded-2xl p-6 w-full max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-bold text-white">Reset Password</h2>
-            <p className="text-xs text-white/50 mt-1 mb-4">
+            <h2 className="text-lg font-display font-semibold text-cream">Reset password</h2>
+            <p className="text-xs text-fog mt-1 mb-4">
               Masukkan username kamu. Jika akunmu sudah menautkan Telegram, password baru
               dikirim ke chat @finot_finance_bot.
             </p>
 
             {forgotMsg && (
               <div className={`mb-3 text-xs rounded-lg px-3 py-2 ${forgotMsg.type === "ok"
-                ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
-                : "bg-rose-500/10 text-rose-300 border border-rose-500/20"
+                ? "bg-credit/10 text-credit border border-credit/30"
+                : "bg-debit/10 text-debit border border-debit/30"
                 }`}>
                 {forgotMsg.text}
               </div>
@@ -190,13 +191,13 @@ export default function UserLogin() {
                 onChange={(e) => setForgotUser(e.target.value)}
                 placeholder="Username"
                 autoFocus
-                className="w-full px-3 py-2.5 bg-white/5 border border-border rounded-lg text-sm text-white placeholder-white/25 focus:outline-none focus:ring-1 focus:ring-orange/50"
+                className="w-full px-3 py-2.5 bg-ink border border-ledger-line rounded-lg text-sm text-cream placeholder-fog/40 focus:outline-none focus:ring-2 focus:ring-moss/20 focus:border-moss"
               />
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setForgotOpen(false)}
-                  className="flex-1 py-2.5 border border-border text-white/70 text-sm font-semibold rounded-lg hover:bg-white/5"
+                  className="flex-1 py-2.5 border border-ledger-line text-fog text-sm font-semibold rounded-lg hover:bg-white/5"
                 >
                   Batal
                 </button>
@@ -210,8 +211,8 @@ export default function UserLogin() {
               </div>
             </form>
 
-            <p className="text-[0.65rem] text-white/30 mt-4 text-center">
-              Belum bisa terima Telegram? Buka @finot_finance_bot, ketik <code className="text-white/60">/resetweb</code> langsung di chat.
+            <p className="text-[0.65rem] text-fog/70 mt-4 text-center">
+              Belum bisa terima Telegram? Buka @finot_finance_bot, ketik <code className="text-cream">/resetweb</code> langsung di chat.
             </p>
           </div>
         </div>

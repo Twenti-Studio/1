@@ -29,8 +29,9 @@ NC='\033[0m' # No Color
 APP_NAME="finot-bot"
 COMPOSE_FILE="docker-compose.yml"
 BRANCH="main"
-DOMAIN="finot.twenti.studio"
-UPSTREAM_PORT=8000
+DOMAIN="fi-note.app"
+UPSTREAM_PORT=8002
+CERTBOT_EMAIL="${CERTBOT_EMAIL:-11231072@student.itk.ac.id}"
 
 # ── Helper functions ───────────────────────────────
 log_info()  { echo -e "${CYAN}[INFO]${NC}  $1"; }
@@ -171,7 +172,7 @@ NGINX_CONF
     echo ""
     read -p "Continue with SSL setup? (y/n): " SSL_CONFIRM
     if [ "$SSL_CONFIRM" = "y" ]; then
-        certbot --nginx -d ${DOMAIN} --non-interactive --agree-tos --email admin@twenti.studio --redirect
+        certbot --nginx -d ${DOMAIN} --non-interactive --agree-tos --email ${CERTBOT_EMAIL} --redirect
         log_ok "SSL certificate installed!"
     else
         log_warn "Skipping SSL - run 'certbot --nginx -d ${DOMAIN}' later"

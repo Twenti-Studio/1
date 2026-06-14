@@ -890,7 +890,7 @@ async def _handle_command(chat_id: int, user_id: int, text: str):
         await _handle_payday_command(chat_id, user_id)
 
     elif command in ("/report", "/lapor"):
-        dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/webhook/telegram").rstrip("/")
+        dashboard_url = os.getenv("WEBHOOK_URL", "https://fi-note.app").rstrip("/webhook/telegram").rstrip("/")
         await send_telegram_message(
             chat_id,
             f"📝 <b>Fitur Report</b>\n"
@@ -914,7 +914,7 @@ async def _handle_command(chat_id: int, user_id: int, text: str):
 
 def _dashboard_base_url() -> str:
     """Derive the dashboard base URL from WEBHOOK_URL (strips /webhook/telegram)."""
-    raw = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio")
+    raw = os.getenv("WEBHOOK_URL", "https://fi-note.app")
     base = raw.rstrip("/")
     if base.endswith("/webhook/telegram"):
         base = base[: -len("/webhook/telegram")]
@@ -1098,8 +1098,8 @@ async def _cb_show_order_summary(
     text += (
         f"\n━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"Dengan melanjutkan pembayaran, kamu menyetujui:\n"
-        f'• <a href="https://finot.twenti.studio/legal/terms-of-service">Terms of Service</a>\n'
-        f'• <a href="https://finot.twenti.studio/legal/privacy-policy">Privacy Policy</a>\n\n'
+        f'• <a href="https://fi-note.app/legal/terms-of-service">Terms of Service</a>\n'
+        f'• <a href="https://fi-note.app/legal/privacy-policy">Privacy Policy</a>\n\n'
         f"<i>Lanjutkan pembayaran?</i>"
     )
 
@@ -2404,7 +2404,7 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
 
         elif text.lower().strip() in ("report", "lapor", "laporan", "komplain"):
             # Redirect to dashboard for reports
-            dashboard_url = os.getenv("WEBHOOK_URL", "https://finot.twenti.studio").rstrip("/webhook/telegram").rstrip("/")
+            dashboard_url = os.getenv("WEBHOOK_URL", "https://fi-note.app").rstrip("/webhook/telegram").rstrip("/")
             await send_telegram_message(
                 chat_id,
                 f"📝 Untuk mengirim laporan, silakan gunakan fitur Report di dashboard:\n\n"

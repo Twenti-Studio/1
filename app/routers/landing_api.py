@@ -395,7 +395,7 @@ These Terms shall be governed by and interpreted in accordance with the laws app
 If you have any questions regarding these Terms, please contact:
 
 Email: twentistudio@gmail.com
-Website: https://finot.twenti.studio
+Website: https://fi-note.app
 """,
     },
     "privacy-policy": {
@@ -569,7 +569,7 @@ We may update this Privacy Policy from time to time. Updates will be posted on t
 If you have any questions about this Privacy Policy, please contact us:
 
 Email: twentistudio@gmail.com
-Website: https://finot.twenti.studio
+Website: https://fi-note.app
 """,
     },
 }

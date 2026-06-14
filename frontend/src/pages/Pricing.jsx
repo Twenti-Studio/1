@@ -17,6 +17,15 @@ function formatRupiah(n) {
   }).format(n);
 }
 
+function Eyebrow({ children }) {
+  return (
+    <span className="inline-flex items-center gap-2 font-mono text-[0.65rem] tracking-[0.22em] uppercase text-fog">
+      <span className="h-px w-6 bg-moss" />
+      {children}
+    </span>
+  );
+}
+
 /* ─── Plan Data ───────────────────────────────────────── */
 const PLANS = [
   {
@@ -24,8 +33,8 @@ const PLANS = [
     name: "Gratis",
     price: 0,
     period: "Selamanya",
-    tagline: "5 AI credit/minggu — rasakan langsung kekuatan AI",
-    color: "white/70",
+    tagline: "5 kredit AI/minggu — rasakan langsung kekuatan AI",
+    accent: "credit",
     popular: false,
     features: [
       "Catat transaksi (teks, foto, voice)",
@@ -50,7 +59,7 @@ const PLANS = [
     price: 19000,
     period: "/bulan",
     tagline: "30 kredit/minggu — lebih murah dari es teh manis",
-    color: "blue-400",
+    accent: "orange",
     popular: true,
     features: [
       "Semua fitur Free",
@@ -72,7 +81,7 @@ const PLANS = [
     price: 49000,
     period: "/bulan",
     tagline: "100 kredit/minggu — analisis komprehensif tanpa batas",
-    color: "orange",
+    accent: "cream",
     popular: false,
     features: [
       "Semua fitur Pro",
@@ -106,6 +115,9 @@ function PaymentModal({ plan, onClose }) {
   const [credentials, setCredentials] = useState(null);
   const [error, setError] = useState("");
   const [tosAgreed, setTosAgreed] = useState(false);
+
+  const inputCls =
+    "w-full px-4 py-3 bg-ink border border-ledger-line rounded-xl text-cream text-sm placeholder:text-fog/40 focus:outline-none focus:border-moss focus:ring-2 focus:ring-moss/20 transition-all";
 
   const handlePay = async () => {
     if (!contactId.trim()) {
@@ -182,11 +194,12 @@ function PaymentModal({ plan, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-fade-in-up">
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-ink-soft border border-moss/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl shadow-black/50 animate-fade-in-up max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
+          aria-label="Tutup"
+          className="absolute top-4 right-4 text-fog hover:text-cream transition-colors"
         >
           <XMarkIcon className="w-5 h-5" />
         </button>
@@ -196,36 +209,32 @@ function PaymentModal({ plan, onClose }) {
           <div className="space-y-5">
             <div className="text-center">
               <Logo className="h-10 w-auto mx-auto mb-2" glow />
-              <h3 className="text-xl font-bold">Upgrade ke {plan.name}</h3>
-              <p className="text-white text-2xl font-extrabold mt-1">
+              <h3 className="text-xl font-display font-semibold text-cream">Upgrade ke {plan.name}</h3>
+              <p className="text-cream text-2xl font-bold font-mono tnum mt-1">
                 {formatRupiah(plan.price)}
-                <span className="text-sm font-normal text-white/40">{plan.period}</span>
+                <span className="text-sm font-normal text-fog font-sans">{plan.period}</span>
               </p>
             </div>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400">
+              <div className="bg-debit/10 border border-debit/30 rounded-xl px-4 py-3 text-sm text-debit">
                 {error}
               </div>
             )}
 
             <div>
-              <label className="block text-sm text-white/60 mb-2 font-medium">
-                Nama Lengkap
-              </label>
+              <label className="block text-sm text-fog mb-2 font-medium">Nama lengkap</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Masukkan nama kamu"
-                className="w-full px-4 py-3 bg-navy-dark border border-border rounded-xl text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all"
+                className={inputCls}
               />
             </div>
 
             <div>
-              <label className="block text-sm text-white/60 mb-2 font-medium">
-                Kamu pakai FiNot di mana?
-              </label>
+              <label className="block text-sm text-fog mb-2 font-medium">Kamu pakai FiNot di mana?</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { val: "telegram", label: "Telegram" },
@@ -234,10 +243,11 @@ function PaymentModal({ plan, onClose }) {
                   <button
                     key={opt.val}
                     onClick={() => setContactType(opt.val)}
-                    className={`py-2.5 rounded-xl border text-sm font-medium transition-all ${contactType === opt.val
-                        ? "border-white/30 bg-white/10 text-white"
-                        : "border-border text-white/50 hover:border-white/20"
-                      }`}
+                    className={`py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                      contactType === opt.val
+                        ? "border-moss bg-moss/15 text-cream"
+                        : "border-ledger-line text-fog hover:border-moss/50"
+                    }`}
                   >
                     {opt.label}
                   </button>
@@ -246,7 +256,7 @@ function PaymentModal({ plan, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-white/60 mb-2 font-medium">
+              <label className="block text-sm text-fog mb-2 font-medium">
                 {contactType === "telegram" ? "Username Telegram" : "Nomor WhatsApp"}
               </label>
               <input
@@ -254,35 +264,34 @@ function PaymentModal({ plan, onClose }) {
                 value={contactId}
                 onChange={(e) => setContactId(e.target.value)}
                 placeholder={contactType === "telegram" ? "@username" : "+62812xxxxxxx"}
-                className="w-full px-4 py-3 bg-navy-dark border border-border rounded-xl text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all"
+                className={inputCls}
               />
             </div>
 
-            <div className="pt-2 border-t border-border">
-              <p className="text-xs text-white/40 mb-3">
-                Akun login untuk chat-app FiNot (di browser/mobile).
-                Kosongkan untuk dibuatkan otomatis.
+            <div className="pt-2 border-t border-ledger-line">
+              <p className="text-xs text-fog mb-3">
+                Akun login untuk chat-app FiNot (di browser/mobile). Kosongkan untuk dibuatkan otomatis.
               </p>
               <div>
-                <label className="block text-sm text-white/60 mb-2 font-medium">Username</label>
+                <label className="block text-sm text-fog mb-2 font-medium">Username</label>
                 <input
                   type="text"
                   value={desiredLogin}
                   onChange={(e) => setDesiredLogin(e.target.value)}
                   placeholder="contoh: andi.pratama"
                   autoComplete="off"
-                  className="w-full px-4 py-3 bg-navy-dark border border-border rounded-xl text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all"
+                  className={inputCls}
                 />
               </div>
               <div className="mt-3">
-                <label className="block text-sm text-white/60 mb-2 font-medium">Password (min 6 karakter)</label>
+                <label className="block text-sm text-fog mb-2 font-medium">Password (min 6 karakter)</label>
                 <input
                   type="password"
                   value={desiredPassword}
                   onChange={(e) => setDesiredPassword(e.target.value)}
                   placeholder="Password kamu sendiri"
                   autoComplete="new-password"
-                  className="w-full px-4 py-3 bg-navy-dark border border-border rounded-xl text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all"
+                  className={inputCls}
                 />
               </div>
             </div>
@@ -293,16 +302,16 @@ function PaymentModal({ plan, onClose }) {
                   type="checkbox"
                   checked={tosAgreed}
                   onChange={(e) => setTosAgreed(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-border accent-orange shrink-0"
+                  className="mt-0.5 w-4 h-4 rounded border-ledger-line accent-orange shrink-0"
                 />
-                <span className="text-xs text-white/50 leading-relaxed">
+                <span className="text-xs text-fog leading-relaxed">
                   Saya menyetujui{" "}
                   {siteSettings?.legal_tos_enabled !== false && (
-                    <a href="/legal/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-orange hover:underline">Terms of Service</a>
+                    <a href="/legal/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-credit hover:underline">Terms of Service</a>
                   )}
                   {siteSettings?.legal_tos_enabled !== false && siteSettings?.legal_privacy_enabled !== false && " dan "}
                   {siteSettings?.legal_privacy_enabled !== false && (
-                    <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-orange hover:underline">Privacy Policy</a>
+                    <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-credit hover:underline">Privacy Policy</a>
                   )}
                   {" "}FiNot.
                 </span>
@@ -312,7 +321,7 @@ function PaymentModal({ plan, onClose }) {
             <button
               onClick={handlePay}
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-orange text-white font-semibold shadow-lg shadow-black/30 hover:bg-orange-dark transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -325,7 +334,7 @@ function PaymentModal({ plan, onClose }) {
               )}
             </button>
 
-            <p className="text-[0.7rem] text-white/30 text-center">
+            <p className="text-[0.7rem] text-fog/70 text-center">
               Pembayaran diproses melalui QRIS — mendukung semua e-wallet & mobile banking.
             </p>
           </div>
@@ -334,39 +343,39 @@ function PaymentModal({ plan, onClose }) {
         {/* ── Paying step ── */}
         {step === "paying" && (
           <div className="text-center space-y-4">
-            <h3 className="text-xl font-bold">Lanjutkan Pembayaran</h3>
+            <h3 className="text-xl font-display font-semibold text-cream">Lanjutkan pembayaran</h3>
 
             {qrUrl ? (
               <>
-                <p className="text-sm text-white/50">
-                  Klik tombol di bawah untuk membuka halaman pembayaran QRIS.
-                  Setelah membayar, kembali ke halaman ini — status akan terupdate otomatis.
+                <p className="text-sm text-fog">
+                  Klik tombol di bawah untuk membuka halaman pembayaran QRIS. Setelah membayar,
+                  kembali ke halaman ini — status akan terupdate otomatis.
                 </p>
                 <a
                   href={qrUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30 transition-all"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-orange text-white font-semibold shadow-lg shadow-black/30 hover:bg-orange-dark hover:-translate-y-0.5 transition-all"
                 >
                   <QrCodeIcon className="w-5 h-5" /> Bayar via QRIS
                 </a>
               </>
             ) : (
-              <div className="flex items-center justify-center gap-2 text-white/50 text-sm">
+              <div className="flex items-center justify-center gap-2 text-fog text-sm">
                 <Spinner className="w-4 h-4" /> Menyiapkan pembayaran...
               </div>
             )}
 
-            <div className="flex items-center justify-center gap-2 text-white/50 text-sm">
+            <div className="flex items-center justify-center gap-2 text-fog text-sm">
               <Spinner className="w-3.5 h-3.5" /> Menunggu konfirmasi pembayaran...
             </div>
-            <p className="text-xs text-white/30">
-              Total: {formatRupiah(plan.price)} &bull; Berlaku 30 menit
+            <p className="text-xs text-fog/70 font-mono tnum">
+              Total: {formatRupiah(plan.price)} · Berlaku 30 menit
             </p>
 
             <button
               onClick={() => setStep("form")}
-              className="text-sm text-white/40 hover:text-white transition-colors flex items-center gap-1 mx-auto"
+              className="text-sm text-fog hover:text-cream transition-colors flex items-center gap-1 mx-auto"
             >
               <ArrowLeftIcon className="w-3.5 h-3.5" /> Kembali
             </button>
@@ -376,28 +385,28 @@ function PaymentModal({ plan, onClose }) {
         {/* ── Success step ── */}
         {step === "success" && (
           <div className="text-center space-y-5 py-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-green-500/10 flex items-center justify-center">
-              <CheckIcon className="w-8 h-8 text-green-400" />
+            <div className="w-16 h-16 mx-auto rounded-full bg-credit/15 flex items-center justify-center">
+              <CheckIcon className="w-8 h-8 text-credit" />
             </div>
-            <h3 className="text-xl font-bold">Pembayaran Berhasil!</h3>
-            <p className="text-sm text-white/50 max-w-xs mx-auto">
-              Selamat! Kamu sekarang pengguna <span className="font-semibold text-white">{plan.name}</span>.
+            <h3 className="text-xl font-display font-semibold text-cream">Pembayaran berhasil!</h3>
+            <p className="text-sm text-fog max-w-xs mx-auto">
+              Selamat! Kamu sekarang pengguna <span className="font-semibold text-cream">{plan.name}</span>.
               Semua fitur premium sudah aktif.
             </p>
             {credentials && (
-              <div className="bg-white/5 border border-border rounded-xl p-4 text-left space-y-2">
-                <p className="text-xs text-white/40 text-center mb-2">Akun Login Kamu</p>
+              <div className="bg-ink border border-ledger-line rounded-xl p-4 text-left space-y-2">
+                <p className="text-xs text-fog text-center mb-2">Akun login kamu</p>
                 <div className="flex justify-between">
-                  <span className="text-sm text-white/50">Username:</span>
-                  <span className="text-sm font-mono font-semibold">{credentials.web_login}</span>
+                  <span className="text-sm text-fog">Username:</span>
+                  <span className="text-sm font-mono font-semibold text-cream">{credentials.web_login}</span>
                 </div>
                 {credentials.password && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-white/50">Password:</span>
-                    <span className="text-sm font-mono font-semibold">{credentials.password}</span>
+                    <span className="text-sm text-fog">Password:</span>
+                    <span className="text-sm font-mono font-semibold text-cream">{credentials.password}</span>
                   </div>
                 )}
-                <p className="text-[0.65rem] text-amber-400 text-center mt-2">
+                <p className="text-[0.65rem] text-orange-light text-center mt-2">
                   {credentials.password
                     ? "Simpan kredensial ini! Kamu bisa mengubahnya di Settings."
                     : "Gunakan password yang sudah kamu pilih sebelumnya."}
@@ -416,9 +425,9 @@ function PaymentModal({ plan, onClose }) {
                   window.location.href = "/login";
                 }
               }}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange text-white font-semibold shadow-lg shadow-black/30 hover:bg-orange-dark hover:-translate-y-0.5 transition-all"
             >
-              Mulai Chat Sekarang →
+              Mulai chat sekarang →
             </button>
           </div>
         )}
@@ -426,18 +435,18 @@ function PaymentModal({ plan, onClose }) {
         {/* ── Failed step ── */}
         {step === "failed" && (
           <div className="text-center space-y-5 py-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
-              <XMarkIcon className="w-8 h-8 text-red-400" />
+            <div className="w-16 h-16 mx-auto rounded-full bg-debit/15 flex items-center justify-center">
+              <XMarkIcon className="w-8 h-8 text-debit" />
             </div>
-            <h3 className="text-xl font-bold">Pembayaran Gagal</h3>
-            <p className="text-sm text-white/50 max-w-xs mx-auto">
+            <h3 className="text-xl font-display font-semibold text-cream">Pembayaran gagal</h3>
+            <p className="text-sm text-fog max-w-xs mx-auto">
               Waktu pembayaran habis atau terjadi kesalahan. Silakan coba lagi.
             </p>
             <button
               onClick={() => setStep("form")}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange text-white font-semibold shadow-lg shadow-black/30 hover:bg-orange-dark transition-all"
             >
-              Coba Lagi
+              Coba lagi
             </button>
           </div>
         )}
@@ -447,70 +456,74 @@ function PaymentModal({ plan, onClose }) {
 }
 
 /* ─── Main Pricing Page ───────────────────────────────── */
+const accentText = {
+  credit: "text-credit",
+  orange: "text-orange",
+  cream: "text-cream",
+};
+
 export default function Pricing() {
   const [selectedPlan, setSelectedPlan] = useState(null);
 
   return (
     <div>
       {/* Header */}
-      <section className="relative overflow-hidden">
-        <div className="absolute -top-32 -right-32 w-96 h-96 bg-navy-light/15 rounded-full blur-[100px] pointer-events-none" />
-        <div className="max-w-5xl mx-auto px-6 pt-16 pb-10 text-center space-y-4">
-          {/* <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white/70 text-xs font-semibold">
-            <Crown size={14} /> Harga Transparan
-          </span> */}
-          <h1 className="text-3xl lg:text-4xl font-bold">
-            Pilih Paket yang{" "}
-            <span className="text-white">
-              Sesuai Kebutuhanmu
-            </span>
-          </h1>
-          <p className="text-white/50 max-w-xl mx-auto">
-            User baru dapat <strong className="text-orange">Trial 7 hari gratis</strong> (35 kredit, semua fitur).
-            Setelah itu, mulai dari Rp0 atau upgrade kapan saja.
-          </p>
+      <section className="max-w-5xl mx-auto px-6 pt-16 pb-12 text-center space-y-5">
+        <div className="flex justify-center">
+          <Eyebrow>Daftar harga</Eyebrow>
         </div>
+        <h1 className="font-display text-4xl lg:text-5xl font-semibold text-cream leading-tight">
+          Pilih paket yang <span className="text-credit">sesuai kebutuhanmu.</span>
+        </h1>
+        <p className="text-fog max-w-xl mx-auto leading-relaxed">
+          User baru dapat <strong className="text-credit font-semibold">trial 7 hari gratis</strong>{" "}
+          (35 kredit, semua fitur). Setelah itu, mulai dari Rp0 atau upgrade kapan saja.
+        </p>
       </section>
 
       {/* Plan cards */}
       <section className="max-w-5xl mx-auto px-6 pb-16">
-        <div className="grid md:grid-cols-3 gap-5">
+        <div className="grid md:grid-cols-3 gap-5 items-start">
           {PLANS.map((plan) => (
             <div
               key={plan.id}
-              className={`relative bg-card border rounded-3xl p-6 flex flex-col transition-all hover:-translate-y-1
-                ${plan.popular ? "border-white/20 shadow-xl shadow-black/10" : "border-border"}`}
+              className={`relative bg-ink-soft rounded-3xl p-6 flex flex-col transition-all hover:-translate-y-1 ${
+                plan.popular ? "border-2 border-orange/60 shadow-xl shadow-black/30" : "border border-ledger-line"
+              }`}
             >
               {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gradient-to-r from-orange to-orange-dark text-white text-[0.65rem] font-bold rounded-full uppercase tracking-wider">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-orange text-white text-[0.62rem] font-bold rounded-full uppercase tracking-wider font-mono">
                   Paling Populer
                 </div>
               )}
 
               <div className="mb-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg font-bold">{plan.name}</h3>
+                <div className="flex items-baseline justify-between mb-2">
+                  <h3 className="font-display text-lg font-semibold text-cream">{plan.name}</h3>
+                  <span className={`font-mono text-[0.62rem] uppercase tracking-[0.14em] ${accentText[plan.accent]}`}>
+                    {plan.id}
+                  </span>
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold">
+                  <span className="font-mono text-3xl font-bold tnum text-cream">
                     {plan.price === 0 ? "Rp0" : formatRupiah(plan.price)}
                   </span>
-                  <span className="text-sm text-white/40">{plan.period}</span>
+                  <span className="text-sm text-fog">{plan.period}</span>
                 </div>
-                <p className="text-xs text-white/40 mt-1">{plan.tagline}</p>
+                <p className="text-xs text-fog mt-1.5 leading-relaxed">{plan.tagline}</p>
               </div>
 
-              <ul className="flex-1 space-y-2.5 mb-6">
+              <ul className="flex-1 space-y-2.5 mb-6 pt-5 border-t border-ledger-line">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-sm">
-                    <CheckIcon className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
-                    <span className="text-white/70">{f}</span>
+                    <CheckIcon className="w-4 h-4 text-credit mt-0.5 shrink-0" />
+                    <span className="text-cream/80">{f}</span>
                   </li>
                 ))}
                 {plan.notIncluded.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-sm">
-                    <XMarkIcon className="w-4 h-4 text-white/20 mt-0.5 shrink-0" />
-                    <span className="text-white/30">{f}</span>
+                    <XMarkIcon className="w-4 h-4 text-fog/30 mt-0.5 shrink-0" />
+                    <span className="text-fog/40 line-through">{f}</span>
                   </li>
                 ))}
               </ul>
@@ -518,17 +531,18 @@ export default function Pricing() {
               {plan.price === 0 ? (
                 <a
                   href="/register"
-                  className="block text-center py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold text-sm hover:-translate-y-0.5 transition-all"
+                  className="block text-center py-3 rounded-xl bg-orange text-white font-semibold text-sm hover:bg-orange-dark hover:-translate-y-0.5 transition-all"
                 >
-                  Mulai Gratis
+                  Mulai gratis
                 </a>
               ) : (
                 <button
                   onClick={() => setSelectedPlan(plan)}
-                  className={`block w-full text-center py-3 rounded-xl font-semibold text-sm transition-all ${plan.popular
-                      ? "bg-gradient-to-r from-orange to-orange-dark text-white shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-0.5"
-                      : "border border-white/20 text-white/70 hover:bg-white/5"
-                    }`}
+                  className={`block w-full text-center py-3 rounded-xl font-semibold text-sm transition-all ${
+                    plan.popular
+                      ? "bg-orange text-white shadow-lg shadow-black/30 hover:bg-orange-dark hover:-translate-y-0.5"
+                      : "border border-moss/50 text-cream hover:bg-moss/15"
+                  }`}
                 >
                   Pilih {plan.name}
                 </button>
@@ -538,76 +552,77 @@ export default function Pricing() {
         </div>
 
         {/* Trust badges */}
-        <div className="mt-12 text-center space-y-3">
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-white/40">
-            <span className="flex items-center gap-1.5">
-              <CheckIcon className="w-3.5 h-3.5 text-green-400" /> Bisa berhenti kapan saja
-            </span>
-            <span className="flex items-center gap-1.5">
-              <CheckIcon className="w-3.5 h-3.5 text-green-400" /> QRIS semua bank & e-wallet
-            </span>
-            <span className="flex items-center gap-1.5">
-              <CheckIcon className="w-3.5 h-3.5 text-green-400" /> Tanpa biaya tersembunyi
-            </span>
-          </div>
+        <div className="mt-12 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-[0.72rem] text-fog">
+          <span className="flex items-center gap-1.5">
+            <CheckIcon className="w-3.5 h-3.5 text-credit" /> Bisa berhenti kapan saja
+          </span>
+          <span className="flex items-center gap-1.5">
+            <CheckIcon className="w-3.5 h-3.5 text-credit" /> QRIS semua bank & e-wallet
+          </span>
+          <span className="flex items-center gap-1.5">
+            <CheckIcon className="w-3.5 h-3.5 text-credit" /> Tanpa biaya tersembunyi
+          </span>
         </div>
       </section>
 
       {/* Comparison table */}
-      <section className="border-t border-border bg-navy-dark/40">
-        <div className="max-w-4xl mx-auto px-6 py-16">
-          <h2 className="text-2xl font-bold text-center mb-8">Perbandingan Lengkap</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 font-semibold text-white/60">Fitur</th>
-                  <th className="text-center py-3 px-4 font-semibold text-white/60">Gratis</th>
-                  <th className="text-center py-3 px-4 font-semibold text-blue-400">Pro</th>
-                  <th className="text-center py-3 px-4 font-semibold text-white/60">Elite</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ["AI Kredit per Minggu", "5", "30", "100"],
-                  ["Catat transaksi (teks/foto/voice)", "✓", "✓", "✓"],
-                  ["Kategori otomatis", "✓", "✓", "✓"],
-                  ["Dashboard & riwayat", "✓", "✓", "✓"],
-                  ["Daily Insight (1 cr)", "✓", "✓", "✓"],
-                  ["Prediksi Umur Saldo (1 cr)", "✓", "✓", "✓"],
-                  ["Burn Rate (1 cr)", "✓", "✓", "✓"],
-                  ["Health Score (1 cr)", "✓", "✓", "✓"],
-                  ["Spending Alert (1 cr)", "✓", "✓", "✓"],
-                  ["Weekly Summary (3 cr)", "—", "✓", "✓"],
-                  ["Saving Recommendation (2 cr)", "—", "✓", "✓"],
-                  ["Budget Suggestion (2 cr)", "—", "✓", "✓"],
-                  ["Goal Saving (2 cr)", "—", "✓", "✓"],
-                  ["Expense Prediction (2 cr)", "—", "✓", "✓"],
-                  ["Subscription Detector (2 cr)", "—", "✓", "✓"],
-                  ["Monthly Deep Analysis (5 cr)", "—", "—", "✓"],
-                  ["Forecast 3 Bulan (4 cr)", "—", "—", "✓"],
-                  ["AI Financial Chat (3 cr)", "—", "—", "✓"],
-                  ["Weekly Strategy (3 cr)", "—", "—", "✓"],
-                  ["Payday Planning (3 cr)", "—", "—", "✓"],
-                  ["Priority support", "—", "—", "✓"],
-                ].map(([feat, free, pro, elite], i) => (
-                  <tr key={i} className="border-b border-border/50 hover:bg-white/2">
-                    <td className="py-3 px-4 text-white/70">{feat}</td>
-                    <td className="py-3 px-4 text-center text-white/40">{free}</td>
-                    <td className="py-3 px-4 text-center text-white/70 font-medium">{pro}</td>
-                    <td className="py-3 px-4 text-center text-white/70">{elite}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <section className="max-w-4xl mx-auto px-6 py-12">
+        <div className="text-center mb-8 space-y-3">
+          <div className="flex justify-center">
+            <Eyebrow>Buku besar fitur</Eyebrow>
           </div>
+          <h2 className="font-display text-2xl lg:text-3xl font-semibold text-cream">Perbandingan lengkap</h2>
+        </div>
+        <div className="overflow-x-auto border border-ledger-line rounded-2xl">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-ledger-line bg-ink-soft">
+                <th className="text-left py-3 px-4 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-fog">Fitur</th>
+                <th className="text-center py-3 px-4 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-credit">Gratis</th>
+                <th className="text-center py-3 px-4 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-orange">Pro</th>
+                <th className="text-center py-3 px-4 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-cream">Elite</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["AI Kredit per Minggu", "5", "30", "100"],
+                ["Catat transaksi (teks/foto/voice)", "✓", "✓", "✓"],
+                ["Kategori otomatis", "✓", "✓", "✓"],
+                ["Dashboard & riwayat", "✓", "✓", "✓"],
+                ["Daily Insight (1 cr)", "✓", "✓", "✓"],
+                ["Prediksi Umur Saldo (1 cr)", "✓", "✓", "✓"],
+                ["Burn Rate (1 cr)", "✓", "✓", "✓"],
+                ["Health Score (1 cr)", "✓", "✓", "✓"],
+                ["Spending Alert (1 cr)", "✓", "✓", "✓"],
+                ["Weekly Summary (3 cr)", "—", "✓", "✓"],
+                ["Saving Recommendation (2 cr)", "—", "✓", "✓"],
+                ["Budget Suggestion (2 cr)", "—", "✓", "✓"],
+                ["Goal Saving (2 cr)", "—", "✓", "✓"],
+                ["Expense Prediction (2 cr)", "—", "✓", "✓"],
+                ["Subscription Detector (2 cr)", "—", "✓", "✓"],
+                ["Monthly Deep Analysis (5 cr)", "—", "—", "✓"],
+                ["Forecast 3 Bulan (4 cr)", "—", "—", "✓"],
+                ["AI Financial Chat (3 cr)", "—", "—", "✓"],
+                ["Weekly Strategy (3 cr)", "—", "—", "✓"],
+                ["Payday Planning (3 cr)", "—", "—", "✓"],
+                ["Priority support", "—", "—", "✓"],
+              ].map(([feat, free, pro, elite], i) => (
+                <tr key={i} className="border-b border-ledger-line/60 last:border-0 hover:bg-ink-soft/60">
+                  <td className="py-2.5 px-4 text-cream/80">{feat}</td>
+                  <td className="py-2.5 px-4 text-center font-mono tnum text-fog">{free}</td>
+                  <td className="py-2.5 px-4 text-center font-mono tnum text-cream font-medium">{pro}</td>
+                  <td className="py-2.5 px-4 text-center font-mono tnum text-cream/80">{elite}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="max-w-3xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-bold text-center mb-8">Pertanyaan soal Harga</h2>
-        <div className="space-y-4">
+      <section className="max-w-3xl mx-auto px-6 py-12">
+        <h2 className="font-display text-2xl font-semibold text-center mb-8 text-cream">Pertanyaan soal harga</h2>
+        <div className="border-t border-ledger-line">
           {[
             {
               q: "Ada trial gratis?",
@@ -626,14 +641,14 @@ export default function Pricing() {
               a: "Tentu! Tidak ada kontrak. Kamu bisa berhenti berlangganan kapan saja. Fitur premium tetap aktif sampai periode berlangganan berakhir.",
             },
           ].map((faq, i) => (
-            <div key={i} className="bg-card border border-border rounded-2xl p-5">
-              <h3 className="font-semibold mb-1">{faq.q}</h3>
-              <p className="text-sm text-white/50">{faq.a}</p>
+            <div key={i} className="border-b border-ledger-line py-4">
+              <h3 className="font-medium text-cream mb-1.5">{faq.q}</h3>
+              <p className="text-sm text-fog leading-relaxed">{faq.a}</p>
             </div>
           ))}
         </div>
         <div className="text-center mt-8">
-          <Link to="/faq" className="text-white/50 text-sm font-medium hover:text-white hover:underline">
+          <Link to="/faq" className="font-mono text-sm text-fog hover:text-cream transition-colors">
             Lihat semua FAQ →
           </Link>
         </div>

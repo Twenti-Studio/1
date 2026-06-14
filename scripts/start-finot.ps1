@@ -5,16 +5,16 @@
 # Yang dilakukan:
 #   1. Tunggu Docker Desktop siap (kalau belum jalan, dia akan di-start)
 #   2. docker compose up -d (start finot-db + finot-bot)
-#   3. Start ngrok tunnel ke port 8002 kalau belum jalan
-#   4. Tunggu webhook /health balas OK
+#   3. Tunggu webhook /health balas OK
+#
+# Catatan: Public access lewat domain fi-note.app (Nginx + SSL di server),
+#          BUKAN ngrok lagi. Lihat deploy.sh untuk deploy di server Linux.
 #
 # Log: %USERPROFILE%\finot-startup.log
 
 $ErrorActionPreference = "Continue"
 $ProjectDir = "c:\MyFolder\ProjekTipis\FiNot_bot"
 $LogFile = "$env:USERPROFILE\finot-startup.log"
-$NgrokExe = "C:\laragon\bin\ngrok\ngrok.exe"
-$NgrokPort = 8002
 
 function Write-Log($msg) {
     $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -56,24 +56,7 @@ Write-Log "Docker ready."
 Write-Log "Menjalankan docker compose up -d..."
 docker compose up -d 2>&1 | ForEach-Object { Write-Log "  $_" }
 
-# ── 3. Start ngrok kalau belum jalan ──
-$ngrokRunning = Get-Process -Name ngrok -ErrorAction SilentlyContinue
-if ($ngrokRunning) {
-    Write-Log "ngrok sudah running (PID: $($ngrokRunning.Id -join ','))."
-} else {
-    if (-not (Test-Path $NgrokExe)) {
-        Write-Log "ERROR: ngrok tidak ditemukan di $NgrokExe"
-    } else {
-        Write-Log "Start ngrok tunnel ke port $NgrokPort..."
-        Start-Process -FilePath $NgrokExe `
-            -ArgumentList "http", "$NgrokPort", "--log=stdout" `
-            -RedirectStandardOutput "$ProjectDir\.ngrok.log" `
-            -WindowStyle Hidden
-        Start-Sleep -Seconds 4
-    }
-}
-
-# ── 4. Tunggu finot-bot healthy ──
+# ── 3. Tunggu finot-bot healthy ──
 Write-Log "Tunggu backend /health..."
 $backendOk = $false
 for ($i = 0; $i -lt 24; $i++) {
@@ -90,19 +73,6 @@ if ($backendOk) {
     Write-Log "Backend /health OK."
 } else {
     Write-Log "PERINGATAN: backend /health belum balas setelah 120 detik."
-}
-
-# ── 5. Verifikasi tunnel ngrok ──
-try {
-    $tunnels = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels" -TimeoutSec 5
-    $url = $tunnels.tunnels | Where-Object { $_.proto -eq "https" } | Select-Object -First 1 -ExpandProperty public_url
-    if ($url) {
-        Write-Log "ngrok tunnel: $url"
-    } else {
-        Write-Log "PERINGATAN: ngrok API balas tapi tidak ada tunnel HTTPS."
-    }
-} catch {
-    Write-Log "PERINGATAN: tidak bisa hubungi ngrok API: $($_.Exception.Message)"
 }
 
 Write-Log "=== FiNot startup done ==="
