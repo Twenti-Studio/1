@@ -23,6 +23,7 @@ from app.services.user_service import (
     get_or_create_user,
     get_user_by_id,
     is_onboarding_complete,
+    reset_web_credentials,
     update_onboarding_profile,
 )
 from app.services.media_service import download_telegram_media
@@ -114,7 +115,7 @@ async def send_telegram_message(
     parse_mode: str = "HTML",
     reply_markup: dict = None,
 ) -> bool:
-    """Send text message via Telegram API."""
+    """Send text message via Telegram API and mirror it into the chat-app log."""
     try:
         payload = {
             "chat_id": chat_id,
@@ -129,6 +130,17 @@ async def send_telegram_message(
             if not resp.is_success:
                 logger.error(f"Telegram sendMessage failed: {resp.status_code} {resp.text}")
             resp.raise_for_status()
+
+            # Mirror outbound bot reply into chat-app history (best-effort)
+            try:
+                from app.services.chat_service import save_chat_message
+                await save_chat_message(
+                    int(chat_id), "assistant", text, kind="text",
+                    meta={"source": "telegram"},
+                )
+            except Exception as mirror_err:
+                logger.debug(f"chat-app mirror skipped: {mirror_err}")
+
             return True
 
     except Exception as e:
@@ -677,6 +689,17 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
 async def _handle_update(chat_id: int, user_id: int, message: dict):
     """Route message to appropriate handler."""
     try:
+        # Mirror inbound TEXT into chat-app log here. Photo/audio inbound is mirrored
+        # later inside the dedicated handlers (after we have the downloaded file path).
+        try:
+            from app.services.chat_service import save_chat_message
+            text_in = message.get("text") or message.get("caption") or ""
+            if text_in:
+                await save_chat_message(int(user_id), "user", text_in, kind="text",
+                                        meta={"source": "telegram"})
+        except Exception as mirror_err:
+            logger.debug(f"chat-app inbound mirror skipped: {mirror_err}")
+
         if not await _handle_onboarding_message(chat_id, user_id, message):
             return
 
@@ -737,6 +760,9 @@ async def _handle_command(chat_id: int, user_id: int, text: str):
 
     elif command == "/web":
         await _send_web_credentials(chat_id, user_id, force_show_username=True)
+
+    elif command == "/resetweb":
+        await _handle_reset_web_command(chat_id, user_id)
 
     elif command == "/status":
         status = await get_subscription_status(user_id)
@@ -887,6 +913,31 @@ async def _send_web_credentials(
             )
     except Exception as e:
         logger.warning(f"Failed to send web credentials to user {user_id}: {e}")
+
+
+async def _handle_reset_web_command(chat_id: int, user_id: int):
+    """Force-regenerate the user's chat-app password and send the new credentials."""
+    try:
+        result = await reset_web_credentials(prisma, user_id)
+        if not result:
+            await send_telegram_message(chat_id, "Akun tidak ditemukan. Coba /start dulu.")
+            return
+        login, password = result
+        dashboard = _dashboard_base_url()
+        await send_telegram_message(
+            chat_id,
+            f"🔑 <b>Password Chat-App Direset</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"Login di: {dashboard}/login\n"
+            f"Chat: {dashboard}/chat\n\n"
+            f"Username: <code>{login}</code>\n"
+            f"Password baru: <code>{password}</code>\n\n"
+            f"⚠️ Password lama tidak berlaku lagi.\n"
+            f"Simpan password ini — tidak akan ditampilkan lagi."
+        )
+    except Exception as e:
+        logger.error(f"reset web command failed: {e}", exc_info=True)
+        await send_telegram_message(chat_id, "Gagal reset password. Coba lagi sebentar.")
 
 
 async def _handle_upgrade_command(chat_id: int, user_id: int):
@@ -2497,6 +2548,18 @@ async def _handle_photo(
         # Download
         media = await download_telegram_media(file_id, BOT_TOKEN, str(user_id))
 
+        # Mirror image bubble into chat-app log with viewable URL (best-effort)
+        try:
+            from app.services.chat_service import save_chat_message as _save_msg
+            from pathlib import Path as _P
+            _basename = _P(media["file_path"]).name
+            await _save_msg(
+                int(user_id), "user", "[foto struk]", kind="image",
+                meta={"file_url": f"/api/chat/file/{_basename}", "source": "telegram"},
+            )
+        except Exception as _e:
+            logger.debug(f"image mirror skipped: {_e}")
+
         # Save receipt
         receipt = await create_receipt(
             prisma,
@@ -2554,6 +2617,18 @@ async def _handle_audio(chat_id: int, user_id: int, message: dict):
 
         # Download
         media = await download_telegram_media(file_id, BOT_TOKEN, str(user_id))
+
+        # Mirror voice bubble into chat-app log (best-effort)
+        try:
+            from app.services.chat_service import save_chat_message as _save_msg
+            from pathlib import Path as _P
+            _basename = _P(media["file_path"]).name
+            await _save_msg(
+                int(user_id), "user", "[pesan suara]", kind="audio",
+                meta={"file_url": f"/api/chat/file/{_basename}", "source": "telegram"},
+            )
+        except Exception as _e:
+            logger.debug(f"audio mirror skipped: {_e}")
 
         # Process
         from worker import process_audio_message

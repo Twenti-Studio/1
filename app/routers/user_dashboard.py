@@ -169,6 +169,63 @@ async def user_me(request: Request):
     }
 
 
+class ForgotPasswordRequest(BaseModel):
+    username: str
+
+
+@router.post("/forgot-password")
+async def forgot_password(req: ForgotPasswordRequest):
+    """
+    Send a new auto-generated password to the user via Telegram.
+    Public endpoint — does not require login.
+    Always returns success-ish to prevent username enumeration.
+    """
+    username = (req.username or "").strip().lower()
+    if not username:
+        return JSONResponse(
+            {"success": False, "error": "Username wajib diisi"}, status_code=400,
+        )
+
+    user = await prisma.user.find_first(where={"webLogin": username})
+    if not user:
+        # Don't reveal whether user exists
+        return {
+            "success": True,
+            "message": "Kalau username ini terdaftar, password baru sudah dikirim ke Telegram-mu.",
+        }
+
+    from app.services.user_service import reset_web_credentials
+    from app.webhook.telegram import send_telegram_message, _dashboard_base_url
+
+    result = await reset_web_credentials(prisma, int(user.id))
+    if not result:
+        return JSONResponse(
+            {"success": False, "error": "Gagal reset password. Coba lagi."},
+            status_code=500,
+        )
+
+    login, plain = result
+    dashboard = _dashboard_base_url()
+    try:
+        await send_telegram_message(
+            int(user.id),
+            f"🔑 <b>Password Chat-App Direset</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"Username: <code>{login}</code>\n"
+            f"Password baru: <code>{plain}</code>\n\n"
+            f"Login di: {dashboard}/login\n\n"
+            f"⚠️ Password lama tidak berlaku lagi.\n"
+            f"Simpan password ini — tidak akan ditampilkan lagi.",
+        )
+    except Exception as e:
+        _logger.error(f"Failed to send reset password to user {user.id}: {e}")
+
+    return {
+        "success": True,
+        "message": "Password baru sudah dikirim ke Telegram-mu. Cek pesan dari @finot_finance_bot.",
+    }
+
+
 @router.get("/logout")
 async def user_logout(request: Request):
     session_id = request.cookies.get("user_session")

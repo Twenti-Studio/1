@@ -5,11 +5,11 @@ import { Link } from "react-router-dom";
 const FAQS = [
   {
     q: "Apa itu FiNot?",
-    a: "FiNot adalah asisten keuangan berbasis AI yang bekerja melalui Telegram dan WhatsApp. Kamu cukup mengirim pesan chat biasa — seperti 'makan siang 35rb' — dan FiNot secara otomatis mencatat transaksimu, mengelompokkan ke kategori yang tepat, serta memberikan insight dan prediksi keuangan yang personal.",
+    a: "FiNot adalah asisten keuangan berbasis AI. Kamu bisa pakai langsung lewat aplikasi chat di browser (web app FiNot), atau lewat Telegram / WhatsApp kalau lebih suka. Cukup kirim pesan chat biasa — seperti 'makan siang 35rb' — dan FiNot secara otomatis mencatat transaksimu, mengelompokkan ke kategori yang tepat, serta memberikan insight dan prediksi keuangan yang personal.",
   },
   {
     q: "Bagaimana cara mulai menggunakan FiNot?",
-    a: "Sangat mudah! Buka Telegram, cari @finot_finance_bot, lalu tekan tombol START. Akunmu langsung aktif tanpa perlu registrasi, isi form, atau verifikasi email. Kamu bisa langsung mulai mencatat pengeluaran pertamamu dalam hitungan detik.",
+    a: "Paling cepat: klik tombol 'Mulai Gratis' di halaman ini — kamu langsung dibawa ke chat app FiNot. Tidak perlu registrasi panjang, isi form, atau verifikasi email. Alternatifnya, kamu juga bisa buka Telegram dan cari @finot_finance_bot lalu tekan START. Kedua cara terhubung ke akun yang sama, jadi riwayat chat akan tersinkron.",
   },
   {
     q: "Apakah FiNot benar-benar gratis?",
@@ -109,20 +109,26 @@ export default function Faq() {
       <section className="border-t border-border bg-navy-dark/40 text-center py-16 px-6">
         <h2 className="text-2xl font-bold mb-3">Masih Punya Pertanyaan?</h2>
         <p className="text-white/50 mb-6 max-w-md mx-auto">
-          Langsung chat ke FiNot Bot — AI kami siap menjawab pertanyaanmu 24/7.
+          Langsung chat ke FiNot — AI kami siap menjawab pertanyaanmu 24/7.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            to="/chat"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
+          >
+            Chat FiNot Sekarang
+          </Link>
           <a
             href="https://t.me/finot_finance_bot"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-white/15 text-white/80 font-medium hover:bg-white/5 transition-colors text-sm"
           >
-            Chat FiNot Bot
+            Lewat Telegram
           </a>
           <Link
             to="/pricing"
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl border border-white/15 text-white font-medium hover:bg-white/5 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-white/60 hover:text-white font-medium text-sm transition-colors"
           >
             Lihat Paket Harga
           </Link>

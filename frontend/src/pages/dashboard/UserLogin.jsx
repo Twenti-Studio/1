@@ -12,6 +12,37 @@ export default function UserLogin() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotUser, setForgotUser] = useState("");
+  const [forgotMsg, setForgotMsg] = useState(null);
+  const [forgotBusy, setForgotBusy] = useState(false);
+
+  async function submitForgot(e) {
+    e.preventDefault();
+    setForgotMsg(null);
+    if (!forgotUser.trim()) {
+      setForgotMsg({ type: "err", text: "Isi username dulu." });
+      return;
+    }
+    setForgotBusy(true);
+    try {
+      const r = await fetch("/api/user/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: forgotUser.trim() }),
+      });
+      const data = await r.json();
+      if (r.ok && data.success) {
+        setForgotMsg({ type: "ok", text: data.message });
+      } else {
+        setForgotMsg({ type: "err", text: data.error || "Gagal mengirim." });
+      }
+    } catch {
+      setForgotMsg({ type: "err", text: "Tidak bisa terhubung ke server." });
+    } finally {
+      setForgotBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (user) navigate(user.plan === "free" ? "/chat" : "/dashboard", { replace: true });
@@ -100,13 +131,24 @@ export default function UserLogin() {
             </button>
           </form>
 
+          <button
+            type="button"
+            onClick={() => { setForgotOpen(true); setForgotUser(username); setForgotMsg(null); }}
+            className="mt-3 w-full text-center text-xs text-white/50 hover:text-orange transition-colors"
+          >
+            Lupa password?
+          </button>
+
           <div className="mt-6 text-center">
             <p className="text-xs text-white/30">
               Belum punya akun?{" "}
-              <a href="/pricing" className="text-orange hover:underline">
-                Berlangganan
+              <a href="/chat" className="text-orange hover:underline">
+                Mulai gratis
               </a>{" "}
-              untuk mendapat akses dashboard.
+              atau{" "}
+              <a href="/pricing" className="text-orange hover:underline">
+                berlangganan
+              </a>.
             </p>
           </div>
         </div>
@@ -117,6 +159,62 @@ export default function UserLogin() {
           </a>
         </div>
       </div>
+
+      {forgotOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setForgotOpen(false)}
+        >
+          <div
+            className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold text-white">Reset Password</h2>
+            <p className="text-xs text-white/50 mt-1 mb-4">
+              Masukkan username kamu. Password baru akan dikirim ke Telegram (chat dari @finot_finance_bot).
+            </p>
+
+            {forgotMsg && (
+              <div className={`mb-3 text-xs rounded-lg px-3 py-2 ${forgotMsg.type === "ok"
+                ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                : "bg-rose-500/10 text-rose-300 border border-rose-500/20"
+                }`}>
+                {forgotMsg.text}
+              </div>
+            )}
+
+            <form onSubmit={submitForgot} className="space-y-3">
+              <input
+                value={forgotUser}
+                onChange={(e) => setForgotUser(e.target.value)}
+                placeholder="Username"
+                autoFocus
+                className="w-full px-3 py-2.5 bg-white/5 border border-border rounded-lg text-sm text-white placeholder-white/25 focus:outline-none focus:ring-1 focus:ring-orange/50"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForgotOpen(false)}
+                  className="flex-1 py-2.5 border border-border text-white/70 text-sm font-semibold rounded-lg hover:bg-white/5"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={forgotBusy}
+                  className="flex-1 py-2.5 bg-orange text-white text-sm font-semibold rounded-lg hover:bg-orange-dark disabled:opacity-40"
+                >
+                  {forgotBusy ? "Mengirim..." : "Kirim Password Baru"}
+                </button>
+              </div>
+            </form>
+
+            <p className="text-[0.65rem] text-white/30 mt-4 text-center">
+              Belum bisa terima Telegram? Buka @finot_finance_bot, ketik <code className="text-white/60">/resetweb</code> langsung di chat.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

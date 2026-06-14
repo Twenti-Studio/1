@@ -4,9 +4,9 @@ const STEPS = [
   {
     num: "01",
     title: "Mulai Chat dengan FiNot",
-    desc: "Buka Telegram dan cari @finot_finance_bot, lalu tekan START. Akunmu langsung aktif — tanpa registrasi, tanpa isi form, tanpa verifikasi email.",
+    desc: "Klik 'Mulai Gratis' di halaman beranda — kamu langsung masuk ke chat app FiNot di browser. Tanpa registrasi panjang, tanpa form, tanpa verifikasi email.",
     detail:
-      "Kamu juga bisa klik langsung link t.me/finot_finance_bot dari halaman ini. FiNot juga tersedia di WhatsApp untuk kenyamananmu.",
+      "Lebih suka Telegram? Cari @finot_finance_bot lalu tekan START. WhatsApp segera hadir. Riwayat chat tersinkron antar platform yang sama akun.",
   },
   {
     num: "02",

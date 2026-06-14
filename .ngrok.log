@@ -1,5 +1,29 @@
-t=2026-05-17T23:05:53+0800 lvl=info msg="no configuration paths supplied"
-t=2026-05-17T23:05:53+0800 lvl=info msg="using configuration at default config path" path=C:\\Users\\noels\\AppData\\Local/ngrok/ngrok.yml
-t=2026-05-17T23:05:53+0800 lvl=info msg="open config file" path=C:\\Users\\noels\\AppData\\Local\\ngrok\\ngrok.yml err=nil
-t=2026-05-17T23:05:53+0800 lvl=info msg="FIPS 140 mode" enabled=false
-t=2026-05-17T23:05:53+0800 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2026-06-14T20:56:35+0800 lvl=info msg="no configuration paths supplied"
+t=2026-06-14T20:56:35+0800 lvl=info msg="using configuration at default config path" path=C:\\Users\\noels\\AppData\\Local/ngrok/ngrok.yml
+t=2026-06-14T20:56:35+0800 lvl=info msg="open config file" path=C:\\Users\\noels\\AppData\\Local\\ngrok\\ngrok.yml err=nil
+t=2026-06-14T20:56:35+0800 lvl=info msg="FIPS 140 mode" enabled=false
+t=2026-06-14T20:56:35+0800 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2026-06-14T20:56:36+0800 lvl=info msg="client session established" obj=tunnels.session
+t=2026-06-14T20:56:36+0800 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2026-06-14T20:56:36+0800 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=http://localhost:8002 url=https://eudemonistic-ideally-leone.ngrok-free.dev
+t=2026-06-14T20:56:36+0800 lvl=info msg="update available" obj=updater
+t=2026-06-14T20:56:40+0800 lvl=info msg=start pg=/api/tunnels id=bc96d95bc781dd7d
+t=2026-06-14T20:56:40+0800 lvl=info msg=end pg=/api/tunnels id=bc96d95bc781dd7d status=200 dur=1.0094ms
+t=2026-06-15T01:08:18+0800 lvl=eror msg="heartbeat timeout, terminating session" obj=tunnels.session obj=csess id=abd776d847cb clientid=9cd584e825e3ff04e4df41a7836f125f
+t=2026-06-15T01:08:18+0800 lvl=eror msg="session closed, starting reconnect loop" obj=tunnels.session obj=csess id=822143479dac err="session closed"
+t=2026-06-15T01:08:38+0800 lvl=eror msg="failed to reconnect session" obj=tunnels.session err="failed to send authentication request: read tcp 10.11.96.62:49825->54.255.3.198:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond."
+t=2026-06-15T01:08:57+0800 lvl=eror msg="failed to reconnect session" obj=tunnels.session err="failed to send authentication request: read tcp 10.11.96.62:51314->54.255.3.198:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond."
+t=2026-06-15T01:09:17+0800 lvl=eror msg="failed to reconnect session" obj=tunnels.session err="failed to send authentication request: read tcp 10.11.96.62:53599->54.255.3.198:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond."
+t=2026-06-15T01:09:38+0800 lvl=eror msg="failed to reconnect session" obj=tunnels.session err="failed to send authentication request: read tcp 10.11.96.62:55204->54.255.3.198:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond."
+t=2026-06-15T01:10:04+0800 lvl=eror msg="failed to reconnect session" obj=tunnels.session err="failed to send authentication request: read tcp 10.11.96.62:53007->3.1.215.86:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond."
+t=2026-06-15T01:10:27+0800 lvl=eror msg="failed to reconnect session" obj=tunnels.session err="failed to send authentication request: read tcp 10.11.96.62:62276->3.1.215.86:443: wsarecv: An existing connection was forcibly closed by the remote host."
+t=2026-06-15T01:10:53+0800 lvl=info msg="client session established" obj=tunnels.session
+t=2026-06-15T01:10:53+0800 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2026-06-15T01:31:53+0800 lvl=eror msg="session closed, starting reconnect loop" obj=tunnels.session obj=csess id=822143479dac err="read tcp 10.11.96.62:59919->3.1.87.213:443: wsarecv: An existing connection was forcibly closed by the remote host."
+t=2026-06-15T01:32:00+0800 lvl=info msg="client session established" obj=tunnels.session
+t=2026-06-15T01:32:00+0800 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2026-06-15T01:32:08+0800 lvl=eror msg="heartbeat timeout, terminating session" obj=tunnels.session obj=csess id=31fb9d1ba049 clientid=9cd584e825e3ff04e4df41a7836f125f
+t=2026-06-15T01:35:04+0800 lvl=eror msg="heartbeat timeout, terminating session" obj=tunnels.session obj=csess id=aea08c40678c clientid=9cd584e825e3ff04e4df41a7836f125f
+t=2026-06-15T01:35:10+0800 lvl=eror msg="session closed, starting reconnect loop" obj=tunnels.session obj=csess id=822143479dac err="read EOF from remote peer"
+t=2026-06-15T01:35:14+0800 lvl=info msg="client session established" obj=tunnels.session
+t=2026-06-15T01:35:14+0800 lvl=info msg="tunnel session started" obj=tunnels.session

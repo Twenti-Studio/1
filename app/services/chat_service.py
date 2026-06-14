@@ -94,16 +94,19 @@ async def save_chat_message(
     meta: Optional[Dict[str, Any]] = None,
 ):
     """Append a message to the chat log."""
+    from prisma import Json
+
+    data: Dict[str, Any] = {
+        "user": {"connect": {"id": user_id}},
+        "role": role,
+        "kind": kind,
+        "content": content,
+    }
+    if meta:
+        data["meta"] = Json(meta)
+
     try:
-        return await prisma.chatmessage.create(
-            data={
-                "userId": user_id,
-                "role": role,
-                "kind": kind,
-                "content": content,
-                "meta": meta or {},
-            }
-        )
+        return await prisma.chatmessage.create(data=data)
     except Exception as e:
         logger.warning(f"Failed to save chat message: {e}")
         return None
@@ -211,7 +214,61 @@ async def handle_text_message(user_id: int, text: str) -> Dict[str, Any]:
         await save_chat_message(user_id, "assistant", reply, kind="text")
         return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
 
-    # ── Default: process as transaction ──
+    # ── Classify intent first (transaction vs chat vs small-talk etc) ──
+    try:
+        from worker.llm.intent_classifier import classify_intent, UserIntent
+
+        classification = await classify_intent(text)
+        intent = classification.get("intent", "transaction")
+        confidence = classification.get("confidence", 0)
+        logger.info(f"chat-app intent: {intent} (conf={confidence:.2f}) text={text[:40]!r}")
+    except Exception as e:
+        logger.warning(f"intent classifier failed, defaulting to transaction: {e}")
+        intent = "transaction"
+        confidence = 1.0
+
+    # ── Small talk / greetings → friendly canned response (no LLM call, no credit) ──
+    if intent == "small_talk":
+        reply = (
+            "Halo! Saya FiNot, asisten keuanganmu.\n\n"
+            "Mau catat transaksi? Langsung kirim pesan seperti:\n"
+            "• <i>beli makan 25rb</i>\n"
+            "• <i>gajian 5jt</i>\n\n"
+            "Atau tanya apa saja seputar keuanganmu — saya akan jawab."
+        )
+        await save_chat_message(user_id, "assistant", reply, kind="text")
+        return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
+
+    # ── AI Chat — open-ended finance question ──
+    if intent == "ai_chat":
+        reply = await _run_ai_chat(user_id, text)
+        await save_chat_message(user_id, "assistant", reply, kind="text")
+        return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
+
+    # ── Help intent ──
+    if intent == "help":
+        reply = (
+            "<b>Cara pakai FiNot</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📝 <b>Catat transaksi</b>\n"
+            "Kirim seperti: <i>beli kopi 15rb</i> atau <i>gajian 5jt</i>\n\n"
+            "📸 <b>Scan struk</b> — klik ikon klip → pilih foto\n"
+            "🎙️ <b>Voice note</b> — klik ikon mic → ceritakan transaksimu\n\n"
+            "💬 <b>Tanya keuangan</b>\n"
+            "Contoh: <i>kenapa uangku cepat habis?</i> atau <i>tips hemat dong</i>"
+        )
+        await save_chat_message(user_id, "assistant", reply, kind="text")
+        return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
+
+    # ── Otherwise: try as transaction. But only if confidence is high enough
+    # OR the text contains digits (heuristic for monetary mention). ──
+    has_digits = any(ch.isdigit() for ch in text)
+    if intent != "transaction" and not has_digits and confidence < 0.5:
+        # Likely not a transaction, but no specific intent matched — fall back to AI chat
+        reply = await _run_ai_chat(user_id, text)
+        await save_chat_message(user_id, "assistant", reply, kind="text")
+        return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
+
     from worker import process_text_message
 
     try:
@@ -219,6 +276,14 @@ async def handle_text_message(user_id: int, text: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"chat_service text pipeline failed: {e}", exc_info=True)
         reply = "Maaf, terjadi kesalahan saat memproses pesanmu. Coba lagi sebentar."
+        await save_chat_message(user_id, "assistant", reply, kind="text")
+        return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
+
+    # If parser returned no real transactions OR all zero, treat as chat fallback
+    txs = result.get("transactions") or []
+    has_valid_tx = any((t.get("amount") or 0) > 0 for t in txs)
+    if not has_valid_tx:
+        reply = await _run_ai_chat(user_id, text)
         await save_chat_message(user_id, "assistant", reply, kind="text")
         return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
 
@@ -243,6 +308,41 @@ async def handle_text_message(user_id: int, text: str) -> Dict[str, Any]:
     return {"messages": messages, "tx_result": result}
 
 
+async def _run_ai_chat(user_id: int, question: str) -> str:
+    """Run the AI Chat feature (if plan allows + credits available)."""
+    try:
+        plan = await get_user_plan(user_id)
+        if not check_feature_access(plan, "ai_chat"):
+            return (
+                "💬 Untuk tanya-jawab AI keuangan, kamu perlu paket <b>Pro</b> atau <b>Elite</b>.\n"
+                "Sementara itu, kamu tetap bisa catat transaksi dengan mengirim pesan seperti "
+                "<i>beli makan 25rb</i> atau <i>gajian 5jt</i>."
+            )
+
+        credits = await check_ai_credits(user_id)
+        if credits.get("remaining", 0) < 1:
+            return (
+                "Kredit AI kamu habis untuk periode ini. "
+                "Tunggu refill mingguan atau upgrade paket untuk kredit lebih banyak."
+            )
+
+        from worker.analysis_service import get_ai_chat
+        result = await get_ai_chat(user_id, question)
+        if not result.get("success"):
+            return "Maaf, saya belum bisa menjawab itu sekarang. Coba lagi sebentar."
+
+        data = result.get("data") or {}
+        answer = data.get("answer") or data.get("response") or data.get("message") or ""
+        if not answer:
+            return "Hmm, saya belum punya jawaban yang pas. Coba tanyakan lagi dengan cara lain."
+
+        await consume_ai_credit(user_id)
+        return f"💬 {answer}"
+    except Exception as e:
+        logger.error(f"_run_ai_chat failed: {e}", exc_info=True)
+        return "Maaf, terjadi kesalahan saat menjawab. Coba lagi sebentar."
+
+
 async def handle_image_message(
     user_id: int,
     data: bytes,
@@ -250,18 +350,22 @@ async def handle_image_message(
     mime: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Process an uploaded receipt image."""
-    # Persist user side as a placeholder bubble
-    await save_chat_message(
-        user_id, "user", "[foto struk]", kind="image",
-        meta={"filename": filename, "mime": mime},
-    )
-
     try:
         media = _save_upload_bytes(user_id, data, filename, mime=mime)
         if not media["mime_type"].startswith("image/"):
+            await save_chat_message(user_id, "user", "[file dikirim]", kind="image",
+                                    meta={"filename": filename, "mime": mime})
             reply = "File ini bukan gambar. Kirim foto struk (JPG/PNG)."
             await save_chat_message(user_id, "assistant", reply, kind="text")
             return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
+
+        # Save user bubble with the real file URL so it can be re-opened later
+        file_basename = Path(media["file_path"]).name
+        file_url = f"/api/chat/file/{file_basename}"
+        await save_chat_message(
+            user_id, "user", "[foto struk]", kind="image",
+            meta={"file_url": file_url, "filename": filename, "mime": media["mime_type"]},
+        )
 
         receipt = await create_receipt(
             prisma,
@@ -311,13 +415,15 @@ async def handle_audio_message(
     mime: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Process an uploaded voice note."""
-    await save_chat_message(
-        user_id, "user", "[pesan suara]", kind="audio",
-        meta={"filename": filename, "mime": mime},
-    )
-
     try:
         media = _save_upload_bytes(user_id, data, filename, mime=mime)
+
+        file_basename = Path(media["file_path"]).name
+        file_url = f"/api/chat/file/{file_basename}"
+        await save_chat_message(
+            user_id, "user", "[pesan suara]", kind="audio",
+            meta={"file_url": file_url, "filename": filename, "mime": media["mime_type"]},
+        )
 
         from worker import process_audio_message
 

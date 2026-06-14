@@ -26,6 +26,8 @@ class PaymentCreateRequest(BaseModel):
     contact_type: str  # telegram | whatsapp
     contact_value: str  # @username or phone number
     name: Optional[str] = None  # subscriber's name
+    desired_login: Optional[str] = None  # username yang dipilih user untuk login dashboard
+    desired_password: Optional[str] = None  # password yang dipilih user (akan di-hash)
 
 
 class PaymentCreateResponse(BaseModel):
@@ -94,6 +96,31 @@ async def create_landing_payment(req: PaymentCreateRequest):
                     data={"displayName": req.name.strip()},
                 )
 
+        # If user picked a custom login/password, save them BEFORE payment so the
+        # payment-success flow can either skip the auto-gen step or simply confirm.
+        if req.desired_login and req.desired_login.strip():
+            desired_login = req.desired_login.strip().lower()
+            # Allow only safe chars
+            import re as _re
+            if not _re.match(r"^[a-z0-9._-]{3,32}$", desired_login):
+                return JSONResponse(
+                    {"success": False, "error": "Username 3-32 karakter, huruf kecil/angka/._- saja"},
+                    status_code=400,
+                )
+            collision = await prisma.user.find_first(
+                where={"webLogin": desired_login, "id": {"not": user.id}},
+            )
+            if collision:
+                return JSONResponse(
+                    {"success": False, "error": f"Username '{desired_login}' sudah dipakai. Pilih yang lain."},
+                    status_code=400,
+                )
+            data_update: dict = {"webLogin": desired_login}
+            if req.desired_password and len(req.desired_password) >= 6:
+                from app.services.payment_service import _hash_pw
+                data_update["webPassword"] = _hash_pw(req.desired_password)
+            await prisma.user.update(where={"id": user.id}, data=data_update)
+
         # Create payment order (same flow as Telegram)
         result = await create_payment_order(
             user_id=user.id,
@@ -126,6 +153,36 @@ async def create_landing_payment(req: PaymentCreateRequest):
     except Exception as e:
         _logger.error(f"Error creating landing payment: {e}", exc_info=True)
         return JSONResponse({"success": False, "error": "Terjadi kesalahan, silakan coba lagi"})
+
+
+@router.post("/payment/auto-login/{payment_id}")
+async def auto_login_after_payment(payment_id: int):
+    """
+    After a successful payment, mint a user session cookie so the frontend can
+    redirect straight to /chat without asking the user to type credentials.
+    """
+    try:
+        import secrets as _secrets
+        from app.routers.user_dashboard import USER_SESSIONS
+
+        payment = await prisma.payment.find_unique(where={"id": payment_id})
+        if not payment:
+            return JSONResponse({"success": False, "error": "Payment not found"}, status_code=404)
+        if payment.status != "paid":
+            return JSONResponse({"success": False, "error": "Payment belum lunas"}, status_code=400)
+
+        session_id = _secrets.token_hex(24)
+        USER_SESSIONS[session_id] = int(payment.userId)
+
+        resp = JSONResponse({"success": True, "redirect": "/chat"})
+        resp.set_cookie(
+            "user_session", session_id,
+            httponly=True, samesite="lax", max_age=30 * 24 * 3600,
+        )
+        return resp
+    except Exception as e:
+        _logger.error(f"auto-login failed: {e}", exc_info=True)
+        return JSONResponse({"success": False, "error": "Internal error"}, status_code=500)
 
 
 @router.get("/payment/status/{payment_id}")

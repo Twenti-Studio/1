@@ -98,9 +98,11 @@ function PaymentModal({ plan, onClose }) {
   const [contactType, setContactType] = useState("telegram");
   const [contactId, setContactId] = useState("");
   const [name, setName] = useState("");
+  const [desiredLogin, setDesiredLogin] = useState("");
+  const [desiredPassword, setDesiredPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
-  const [_paymentId, setPaymentId] = useState(null);
+  const [paymentId, setPaymentId] = useState(null);
   const [credentials, setCredentials] = useState(null);
   const [error, setError] = useState("");
   const [tosAgreed, setTosAgreed] = useState(false);
@@ -112,6 +114,14 @@ function PaymentModal({ plan, onClose }) {
     }
     if (!name.trim()) {
       setError("Masukkan nama kamu");
+      return;
+    }
+    if (desiredLogin.trim() && !/^[a-z0-9._-]{3,32}$/.test(desiredLogin.trim().toLowerCase())) {
+      setError("Username 3-32 karakter, huruf kecil/angka/._- saja");
+      return;
+    }
+    if (desiredPassword && desiredPassword.length < 6) {
+      setError("Password minimal 6 karakter");
       return;
     }
     if (legalRequired && !tosAgreed) {
@@ -129,6 +139,8 @@ function PaymentModal({ plan, onClose }) {
           contact_type: contactType,
           contact_value: contactId.trim(),
           name: name.trim(),
+          desired_login: desiredLogin.trim() || undefined,
+          desired_password: desiredPassword || undefined,
         }),
       });
       const data = await res.json();
@@ -246,6 +258,35 @@ function PaymentModal({ plan, onClose }) {
               />
             </div>
 
+            <div className="pt-2 border-t border-border">
+              <p className="text-xs text-white/40 mb-3">
+                Akun login untuk chat-app FiNot (di browser/mobile).
+                Kosongkan untuk dibuatkan otomatis.
+              </p>
+              <div>
+                <label className="block text-sm text-white/60 mb-2 font-medium">Username</label>
+                <input
+                  type="text"
+                  value={desiredLogin}
+                  onChange={(e) => setDesiredLogin(e.target.value)}
+                  placeholder="contoh: andi.pratama"
+                  autoComplete="off"
+                  className="w-full px-4 py-3 bg-navy-dark border border-border rounded-xl text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all"
+                />
+              </div>
+              <div className="mt-3">
+                <label className="block text-sm text-white/60 mb-2 font-medium">Password (min 6 karakter)</label>
+                <input
+                  type="password"
+                  value={desiredPassword}
+                  onChange={(e) => setDesiredPassword(e.target.value)}
+                  placeholder="Password kamu sendiri"
+                  autoComplete="new-password"
+                  className="w-full px-4 py-3 bg-navy-dark border border-border rounded-xl text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all"
+                />
+              </div>
+            </div>
+
             {legalRequired && (
               <label className="flex items-start gap-2.5 cursor-pointer select-none">
                 <input
@@ -345,24 +386,40 @@ function PaymentModal({ plan, onClose }) {
             </p>
             {credentials && (
               <div className="bg-white/5 border border-border rounded-xl p-4 text-left space-y-2">
-                <p className="text-xs text-white/40 text-center mb-2">Akun Dashboard Kamu</p>
+                <p className="text-xs text-white/40 text-center mb-2">Akun Login Kamu</p>
                 <div className="flex justify-between">
                   <span className="text-sm text-white/50">Username:</span>
                   <span className="text-sm font-mono font-semibold">{credentials.web_login}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-white/50">Password:</span>
-                  <span className="text-sm font-mono font-semibold">{credentials.password}</span>
-                </div>
-                <p className="text-[0.65rem] text-amber-400 text-center mt-2">Simpan kredensial ini! Kamu bisa mengubahnya di Settings.</p>
+                {credentials.password && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-white/50">Password:</span>
+                    <span className="text-sm font-mono font-semibold">{credentials.password}</span>
+                  </div>
+                )}
+                <p className="text-[0.65rem] text-amber-400 text-center mt-2">
+                  {credentials.password
+                    ? "Simpan kredensial ini! Kamu bisa mengubahnya di Settings."
+                    : "Gunakan password yang sudah kamu pilih sebelumnya."}
+                </p>
               </div>
             )}
-            <a
-              href="/login"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20"
+            <button
+              onClick={async () => {
+                try {
+                  const r = await fetch(`/api/landing/payment/auto-login/${paymentId}`, {
+                    method: "POST", credentials: "include",
+                  });
+                  const data = await r.json();
+                  window.location.href = data?.redirect || "/chat";
+                } catch {
+                  window.location.href = "/login";
+                }
+              }}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
             >
-              Masuk ke Dashboard
-            </a>
+              Mulai Chat Sekarang →
+            </button>
           </div>
         )}
 
@@ -460,10 +517,8 @@ export default function Pricing() {
 
               {plan.price === 0 ? (
                 <a
-                  href="https://t.me/finot_finance_bot"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-center py-3 rounded-xl border border-border text-white/60 font-semibold text-sm hover:bg-white/5 hover:border-white/20 transition-all"
+                  href="/chat"
+                  className="block text-center py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold text-sm hover:-translate-y-0.5 transition-all"
                 >
                   Mulai Gratis
                 </a>

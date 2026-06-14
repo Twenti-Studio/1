@@ -75,9 +75,7 @@ export default function Layout() {
             </nav>
 
             <a
-              href="https://t.me/finot_finance_bot"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/chat"
               className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-orange to-orange-dark text-white text-sm font-semibold hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 transition-all duration-200"
             >
               Mulai Gratis <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
@@ -119,9 +117,8 @@ export default function Layout() {
               ))}
             </nav>
             <a
-              href="https://t.me/finot_finance_bot"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/chat"
+              onClick={() => setMobileOpen(false)}
               className="flex items-center justify-center gap-2 w-full mt-3 py-2.5 rounded-lg bg-gradient-to-r from-orange to-orange-dark text-white text-sm font-semibold"
             >
               Mulai Gratis <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />

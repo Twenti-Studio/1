@@ -197,6 +197,41 @@ async def ensure_web_credentials(
     return login, plain
 
 
+async def reset_web_credentials(
+    prisma: Prisma, user_id: int
+) -> Optional[Tuple[str, str]]:
+    """
+    Force-regenerate the user's web password (and login slug if missing).
+    Always returns (login, plain_password) so the caller can show it once.
+    """
+    from app.services.payment_service import (
+        _generate_password,
+        _generate_readable_login,
+        _hash_pw,
+    )
+
+    user = await prisma.user.find_unique(where={"id": user_id})
+    if not user:
+        return None
+
+    login = user.webLogin
+    if not login:
+        base = _generate_readable_login(user.displayName or user.username or f"user{user_id}")
+        login = base
+        counter = 1
+        while await prisma.user.find_first(where={"webLogin": login}):
+            login = f"{base}{counter}"
+            counter += 1
+
+    plain = _generate_password()
+    await prisma.user.update(
+        where={"id": user_id},
+        data={"webLogin": login, "webPassword": _hash_pw(plain)},
+    )
+    _logger.info(f"Web credentials RESET for user {user_id}: {login}")
+    return login, plain
+
+
 async def get_user_stats(prisma: Prisma, user_id: int) -> dict:
     """Ambil statistik user."""
     try:

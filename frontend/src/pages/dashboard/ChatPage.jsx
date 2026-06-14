@@ -8,7 +8,9 @@ import {
 } from "@heroicons/react/24/outline";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import FeaturesDrawer from "../../components/FeaturesDrawer";
 import Logo from "../../components/Logo";
+import PWAInstallPrompt from "../../components/PWAInstallPrompt";
 import { useUserAuth } from "../../context/UserAuthContext";
 
 const API = "/api/chat";
@@ -28,6 +30,7 @@ export default function ChatPage() {
     const [recording, setRecording] = useState(false);
     const [error, setError] = useState("");
     const [menuOpen, setMenuOpen] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(false);
     const scrollRef = useRef(null);
     const fileInputRef = useRef(null);
     const recorderRef = useRef(null);
@@ -185,18 +188,25 @@ export default function ChatPage() {
 
     return (
         <div className="h-full flex flex-col bg-bg" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-            {/* Header */}
+            {/* Header — click to open features drawer */}
             <header className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-navy-dark/95 backdrop-blur">
-                <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
-                        <Logo className="h-6 w-auto" />
+                <button
+                    type="button"
+                    onClick={() => setDrawerOpen(true)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-90 active:opacity-80 transition-opacity"
+                    aria-label="Buka menu fitur"
+                >
+                    <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                            <Logo className="h-6 w-auto" />
+                        </div>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-navy-dark" />
                     </div>
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-navy-dark" />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">Asisten FiNot</p>
-                    <p className="text-[0.7rem] text-emerald-400">Aktif Sekarang</p>
-                </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">Asisten FiNot</p>
+                        <p className="text-[0.7rem] text-emerald-400">Aktif Sekarang</p>
+                    </div>
+                </button>
                 <div className="relative">
                     <button
                         onClick={() => setMenuOpen((v) => !v)}
@@ -291,28 +301,79 @@ export default function ChatPage() {
                     </button>
                 )}
             </form>
+
+            {/* Features drawer (opened by tapping the chat header) */}
+            <FeaturesDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+
+            {/* PWA install prompt (Android/Chrome native, iOS manual guide) */}
+            <PWAInstallPrompt />
         </div>
     );
 }
 
 function MessageBubble({ msg }) {
+    const [lightbox, setLightbox] = useState(false);
     const isUser = msg.role === "user";
     if (msg.kind === "system") return <SystemCard msg={msg} />;
+
+    const fileUrl = msg.meta?.file_url;
+    const isImage = msg.kind === "image" && fileUrl;
+    const isAudio = msg.kind === "audio" && fileUrl;
+
     return (
-        <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm ${isUser ? "bg-orange text-white rounded-br-sm" : "bg-white/10 text-white rounded-bl-sm"}`}>
-                {msg.kind === "image" && isUser ? (
-                    <div className="flex items-center gap-2 text-white/90"><PaperClipIcon className="w-4 h-4" /><span>Foto struk terkirim</span></div>
-                ) : msg.kind === "audio" && isUser ? (
-                    <div className="flex items-center gap-2 text-white/90"><MicrophoneIcon className="w-4 h-4" /><span>Pesan suara terkirim</span></div>
-                ) : (
-                    <div className="whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: sanitize(msg.content) }} />
-                )}
-                <div className={`text-[0.6rem] mt-1 ${isUser ? "text-white/70" : "text-white/40"} text-right`}>
-                    {formatTime(msg.created_at)}
+        <>
+            <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] rounded-2xl text-sm leading-relaxed shadow-sm overflow-hidden ${isUser ? "bg-orange text-white rounded-br-sm" : "bg-white/10 text-white rounded-bl-sm"} ${isImage ? "p-1" : "px-3.5 py-2"}`}>
+                    {isImage ? (
+                        <button
+                            type="button"
+                            onClick={() => setLightbox(true)}
+                            className="block w-full"
+                            aria-label="Buka foto"
+                        >
+                            <img
+                                src={fileUrl}
+                                alt="Foto struk"
+                                loading="lazy"
+                                className="rounded-xl max-h-72 w-auto object-cover"
+                            />
+                        </button>
+                    ) : isAudio ? (
+                        <audio
+                            controls
+                            src={fileUrl}
+                            className="block w-full max-w-[220px] mt-1 mb-1"
+                            style={{ height: 36 }}
+                        />
+                    ) : msg.kind === "image" && isUser ? (
+                        <div className="flex items-center gap-2 text-white/90"><PaperClipIcon className="w-4 h-4" /><span>Foto struk terkirim</span></div>
+                    ) : msg.kind === "audio" && isUser ? (
+                        <div className="flex items-center gap-2 text-white/90"><MicrophoneIcon className="w-4 h-4" /><span>Pesan suara terkirim</span></div>
+                    ) : (
+                        <div className="whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: sanitize(msg.content) }} />
+                    )}
+                    <div className={`text-[0.6rem] ${isImage ? "px-2 pb-1" : "mt-1"} ${isUser ? "text-white/70" : "text-white/40"} text-right`}>
+                        {formatTime(msg.created_at)}
+                    </div>
                 </div>
             </div>
-        </div>
+
+            {lightbox && (
+                <div
+                    className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+                    onClick={() => setLightbox(false)}
+                >
+                    <img src={fileUrl} alt="Foto struk" className="max-w-full max-h-full object-contain rounded-xl" />
+                    <button
+                        onClick={() => setLightbox(false)}
+                        className="absolute top-4 right-4 text-white/80 hover:text-white text-2xl leading-none"
+                        aria-label="Tutup"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+        </>
     );
 }
 
@@ -326,7 +387,7 @@ function SystemCard({ msg }) {
                     <div className="flex flex-wrap gap-1.5 mt-2">
                         {choices.map((c) => (
                             <span key={c.key} className="px-2.5 py-1 rounded-full bg-orange/20 text-orange text-[0.7rem] font-medium border border-orange/30">
-                                {c.label}{c.cost > 0 && <span className="opacity-60"> · {c.cost} kr</span>}
+                                {c.label}
                             </span>
                         ))}
                     </div>

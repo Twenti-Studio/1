@@ -73,24 +73,30 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-lg text-white/60 max-w-xl mx-auto lg:mx-0">
-              FiNot adalah asisten AI di Telegram &amp; WhatsApp yang mencatat pengeluaranmu,
-              membaca struk belanja, dan memberikan insight keuangan yang personal — semua lewat
-              chat biasa, tanpa perlu buka aplikasi lain.
+              FiNot adalah asisten AI yang mencatat pengeluaranmu, membaca struk belanja,
+              dan memberi insight keuangan personal semua lewat chat. Pakai langsung di
+              browser, atau lewat Telegram &amp; WhatsApp.
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+              <Link
+                to="/chat"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30 transition-all"
+              >
+                Coba Gratis Sekarang
+              </Link>
               <a
                 href="https://t.me/finot_finance_bot"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30 transition-all"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl border border-white/15 text-white/80 hover:bg-white/5 transition-colors text-sm font-medium"
               >
-                Coba Gratis Sekarang
+                Buka di Telegram
               </a>
               <Link
                 to="/features"
                 className="inline-flex items-center gap-1.5 text-white/60 hover:text-white font-medium transition-colors"
               >
-                Lihat Semua Fitur <ArrowRightIcon className="w-4 h-4" />
+                Lihat Fitur <ArrowRightIcon className="w-4 h-4" />
               </Link>
             </div>
           </div>
@@ -213,21 +219,27 @@ export default function Home() {
             </span>
           </h2>
           <p className="text-white/50 max-w-lg mx-auto">
-            Mulai gratis sekarang. Tanpa kartu kredit, tanpa aplikasi tambahan — langsung chat di
-            Telegram atau WhatsApp.
+            Mulai gratis sekarang. Tanpa kartu kredit. Pakai langsung di browser, atau
+            lewat Telegram &amp; WhatsApp kalau lebih suka.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              to="/chat"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
+            >
+              Mulai Gratis Sekarang
+            </Link>
             <a
               href="https://t.me/finot_finance_bot"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl border border-white/15 text-white/80 font-medium hover:bg-white/5 transition-colors text-sm"
             >
-              Mulai Gratis di Telegram
+              Buka di Telegram
             </a>
             <Link
               to="/pricing"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl border border-white/15 text-white font-medium hover:bg-white/5 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-white/60 hover:text-white font-medium transition-colors text-sm"
             >
               Lihat Paket Harga <ChevronRightIcon className="w-4 h-4" />
             </Link>

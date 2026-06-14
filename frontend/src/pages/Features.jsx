@@ -177,17 +177,23 @@ export default function Features() {
           Upgrade ke Pro atau Elite kapan saja!
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            to="/chat"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
+          >
+            Mulai Trial 7 Hari
+          </Link>
           <a
             href="https://t.me/finot_finance_bot"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-white/15 text-white/80 font-medium hover:bg-white/5 transition-colors text-sm"
           >
-            Mulai Trial 7 Hari
+            Buka di Telegram
           </a>
           <Link
             to="/pricing"
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl border border-white/15 text-white font-medium hover:bg-white/5 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-white/60 hover:text-white font-medium text-sm transition-colors"
           >
             Bandingkan Paket
           </Link>
