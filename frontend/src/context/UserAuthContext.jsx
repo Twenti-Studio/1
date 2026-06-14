@@ -57,13 +57,37 @@ export function UserAuthProvider({ children }) {
     }
   }
 
+  async function register(username, password, name) {
+    try {
+      const res = await fetch("/api/user/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, name }),
+      });
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        return { success: false, error: "Server error, coba lagi nanti" };
+      }
+      if (data.success) {
+        setUser(data.user);
+        return { success: true, user: data.user };
+      }
+      return { success: false, error: data.error || "Pendaftaran gagal" };
+    } catch {
+      return { success: false, error: "Tidak bisa terhubung ke server" };
+    }
+  }
+
   async function logout() {
     await fetch("/api/user/logout");
     setUser(null);
   }
 
   return (
-    <UserAuthContext.Provider value={{ user, loading, login, logout, checkAuth }}>
+    <UserAuthContext.Provider value={{ user, loading, login, register, logout, checkAuth }}>
       {children}
     </UserAuthContext.Provider>
   );

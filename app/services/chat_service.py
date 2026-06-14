@@ -112,25 +112,84 @@ async def save_chat_message(
         return None
 
 
-async def fetch_chat_history(user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
-    """Return last N chat messages in chronological order."""
+def _serialize_message(r) -> Dict[str, Any]:
+    return {
+        "id": str(r.id),
+        "role": r.role,
+        "kind": r.kind,
+        "content": r.content,
+        "meta": r.meta or {},
+        "created_at": r.createdAt.isoformat() if r.createdAt else None,
+    }
+
+
+async def fetch_chat_history(
+    user_id: int,
+    limit: int = 50,
+    start: Optional[datetime] = None,
+    end: Optional[datetime] = None,
+) -> List[Dict[str, Any]]:
+    """Return chat messages in chronological order.
+
+    If `start`/`end` are given, restrict to messages in [start, end) — used for
+    per-date "rooms". Otherwise return the last `limit` messages.
+    """
+    where: Dict[str, Any] = {"userId": user_id}
+    if start is not None or end is not None:
+        created: Dict[str, Any] = {}
+        if start is not None:
+            created["gte"] = start
+        if end is not None:
+            created["lt"] = end
+        where["createdAt"] = created
+        rows = await prisma.chatmessage.find_many(
+            where=where,
+            order={"createdAt": "asc"},
+            take=limit,
+        )
+        return [_serialize_message(r) for r in rows]
+
     rows = await prisma.chatmessage.find_many(
-        where={"userId": user_id},
+        where=where,
         order={"createdAt": "desc"},
         take=limit,
     )
     rows.reverse()
-    return [
-        {
-            "id": str(r.id),
-            "role": r.role,
-            "kind": r.kind,
-            "content": r.content,
-            "meta": r.meta or {},
-            "created_at": r.createdAt.isoformat() if r.createdAt else None,
-        }
-        for r in rows
-    ]
+    return [_serialize_message(r) for r in rows]
+
+
+async def list_chat_sessions(user_id: int, tz_offset_minutes: int = 0) -> List[Dict[str, Any]]:
+    """Group chat messages into per-date "rooms" using the caller's timezone.
+
+    `tz_offset_minutes` is the user's offset from UTC in minutes
+    (i.e. `-new Date().getTimezoneOffset()` on the client). Returns newest first.
+    """
+    rows = await prisma.query_raw(
+        """
+        SELECT to_char(date_trunc('day', created_at + make_interval(mins => $1::int)),
+                       'YYYY-MM-DD') AS date,
+               COUNT(*)::int AS count,
+               MAX(created_at) AS last_at
+        FROM chat_messages
+        WHERE user_id = $2
+        GROUP BY 1
+        ORDER BY 1 DESC
+        """,
+        int(tz_offset_minutes),
+        int(user_id),
+    )
+
+    sessions: List[Dict[str, Any]] = []
+    for r in rows or []:
+        last_at = r.get("last_at")
+        if isinstance(last_at, datetime):
+            last_at = last_at.isoformat()
+        sessions.append({
+            "date": r.get("date"),
+            "count": int(r.get("count") or 0),
+            "last_at": last_at,
+        })
+    return sessions
 
 
 async def clear_chat_history(user_id: int) -> int:

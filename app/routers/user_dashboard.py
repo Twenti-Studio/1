@@ -136,6 +136,74 @@ async def user_login(req: UserLoginRequest):
     return resp
 
 
+class UserRegisterRequest(BaseModel):
+    username: str
+    password: str
+    name: Optional[str] = None
+
+
+@router.post("/register")
+async def user_register(req: UserRegisterRequest):
+    """Create a standalone web account (no Telegram required) and sign in."""
+    import re as _re
+
+    username = (req.username or "").strip().lower()
+    password = req.password or ""
+
+    if not _re.match(r"^[a-z0-9._-]{3,32}$", username):
+        return JSONResponse(
+            {"success": False, "error": "Username 3-32 karakter: huruf kecil, angka, . _ -"},
+            status_code=400,
+        )
+    if len(password) < 6:
+        return JSONResponse(
+            {"success": False, "error": "Password minimal 6 karakter"},
+            status_code=400,
+        )
+
+    existing = await prisma.user.find_first(where={"webLogin": username})
+    if existing:
+        return JSONResponse(
+            {"success": False, "error": "Username sudah dipakai. Pilih yang lain."},
+            status_code=409,
+        )
+
+    from app.services.user_service import create_web_user
+
+    try:
+        user = await create_web_user(prisma, username, password, name=req.name)
+    except Exception as e:
+        _logger.error(f"register failed: {e}", exc_info=True)
+        return JSONResponse(
+            {"success": False, "error": "Gagal membuat akun. Coba lagi."},
+            status_code=500,
+        )
+
+    session_id = secrets.token_hex(24)
+    USER_SESSIONS[session_id] = int(user.id)
+
+    resp = JSONResponse({
+        "success": True,
+        "user": {
+            "id": str(user.id),
+            "username": user.webLogin,
+            "display_name": user.displayName,
+            "plan": user.plan,
+            "trial_ends_at": user.trialEndsAt.isoformat() if user.trialEndsAt else None,
+            "telegram_linked": False,
+            "telegram_id": None,
+        },
+    })
+    resp.set_cookie(
+        key="user_session",
+        value=session_id,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7,
+    )
+    return resp
+
+
 @router.get("/me")
 async def user_me(request: Request):
     """Check if user is authenticated."""
@@ -165,6 +233,8 @@ async def user_me(request: Request):
             "display_name": user.displayName,
             "plan": plan,
             "trial_ends_at": trial_ends_at.isoformat() if trial_ends_at else None,
+            "telegram_linked": user.telegramId is not None,
+            "telegram_id": str(user.telegramId) if user.telegramId else None,
         },
     }
 
@@ -191,8 +261,19 @@ async def forgot_password(req: ForgotPasswordRequest):
         # Don't reveal whether user exists
         return {
             "success": True,
-            "message": "Kalau username ini terdaftar, password baru sudah dikirim ke Telegram-mu.",
+            "message": "Kalau username ini terdaftar & Telegram-nya tertaut, password baru sudah dikirim.",
         }
+
+    # Password reset is delivered via Telegram, so it only works for linked accounts.
+    if not user.telegramId:
+        return JSONResponse(
+            {
+                "success": False,
+                "error": "Akun ini belum menautkan Telegram, jadi reset otomatis tidak tersedia. "
+                         "Hubungi support untuk reset manual.",
+            },
+            status_code=400,
+        )
 
     from app.services.user_service import reset_web_credentials
     from app.webhook.telegram import send_telegram_message, _dashboard_base_url
@@ -208,7 +289,7 @@ async def forgot_password(req: ForgotPasswordRequest):
     dashboard = _dashboard_base_url()
     try:
         await send_telegram_message(
-            int(user.id),
+            int(user.telegramId),
             f"🔑 <b>Password Chat-App Direset</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"Username: <code>{login}</code>\n"
@@ -234,6 +315,69 @@ async def user_logout(request: Request):
     resp = JSONResponse({"success": True})
     resp.delete_cookie("user_session")
     return resp
+
+
+# ─── Telegram linking ──────────────────────────────────────
+
+import os as _os
+
+
+def _telegram_bot_username() -> str:
+    """Bot username for deep links (without @)."""
+    return _os.getenv("TELEGRAM_BOT_USERNAME", "finot_finance_bot").lstrip("@")
+
+
+@router.get("/telegram/status")
+async def telegram_status(user_id: int = Depends(require_user)):
+    """Return whether this web account has a linked Telegram."""
+    user = await prisma.user.find_unique(where={"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "linked": user.telegramId is not None,
+        "telegram_id": str(user.telegramId) if user.telegramId else None,
+    }
+
+
+@router.post("/telegram/link-code")
+async def telegram_link_code(user_id: int = Depends(require_user)):
+    """Generate a short-lived code + deep link to connect a Telegram account."""
+    user = await prisma.user.find_unique(where={"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.telegramId is not None:
+        return JSONResponse(
+            {"success": False, "error": "Akun ini sudah tertaut dengan Telegram."},
+            status_code=400,
+        )
+
+    from app.services.user_service import generate_telegram_link_code
+
+    code = await generate_telegram_link_code(prisma, user_id)
+    if not code:
+        return JSONResponse(
+            {"success": False, "error": "Gagal membuat kode tautan."},
+            status_code=500,
+        )
+
+    bot = _telegram_bot_username()
+    return {
+        "success": True,
+        "code": code,
+        "deep_link": f"https://t.me/{bot}?start=link_{code}",
+        "expires_in_minutes": 15,
+    }
+
+
+@router.post("/telegram/unlink")
+async def telegram_unlink(user_id: int = Depends(require_user)):
+    """Remove the Telegram link from this web account."""
+    from app.services.user_service import unlink_telegram
+
+    ok = await unlink_telegram(prisma, user_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"success": True}
 
 
 # ─── Dashboard data endpoints ─────────────────────────────
@@ -326,6 +470,8 @@ async def user_dashboard(user_id: int = Depends(require_user)):
             "plan": current_plan,
             "trial_ends_at": trial_ends_at.isoformat() if trial_ends_at else None,
             "trial_days_left": trial_days_left,
+            "telegram_linked": user.telegramId is not None,
+            "telegram_id": str(user.telegramId) if user.telegramId else None,
         },
         "plan_status": {
             "plan": current_plan,

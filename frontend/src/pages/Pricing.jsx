@@ -517,7 +517,7 @@ export default function Pricing() {
 
               {plan.price === 0 ? (
                 <a
-                  href="/chat"
+                  href="/register"
                   className="block text-center py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold text-sm hover:-translate-y-0.5 transition-all"
                 >
                   Mulai Gratis

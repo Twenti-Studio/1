@@ -18,6 +18,7 @@ import SettingsPage from "./pages/dashboard/SettingsPage";
 import SimulationPage from "./pages/dashboard/SimulationPage";
 import SubscriptionPage from "./pages/dashboard/SubscriptionPage";
 import TransactionPage from "./pages/dashboard/TransactionPage";
+import Register from "./pages/dashboard/Register";
 import UserDashboard from "./pages/dashboard/UserDashboard";
 import UserLogin from "./pages/dashboard/UserLogin";
 import Faq from "./pages/Faq";
@@ -40,8 +41,9 @@ export default function App() {
         <Route path="legal/:slug" element={<LegalPage />} />
       </Route>
 
-      {/* User Login */}
+      {/* User Login & Registration */}
       <Route path="login" element={<UserLogin />} />
+      <Route path="register" element={<Register />} />
 
       {/* FiNot Chat App — standalone, full-screen, PWA */}
       <Route path="chat" element={<ChatLayout />}>

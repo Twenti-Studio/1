@@ -16,6 +16,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
+from datetime import datetime
+
 from app.routers.user_dashboard import require_user
 from app.services.chat_service import (
     clear_chat_history,
@@ -23,6 +25,7 @@ from app.services.chat_service import (
     handle_audio_message,
     handle_image_message,
     handle_text_message,
+    list_chat_sessions,
 )
 
 _logger = logging.getLogger(__name__)
@@ -71,15 +74,48 @@ class TextMessageRequest(BaseModel):
     text: str
 
 
+def _parse_iso(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+@router.get("/sessions")
+async def get_sessions(
+    user_id: int = Depends(require_user),
+    tz_offset: int = 0,
+):
+    """Return chat history grouped into per-date rooms (newest first)."""
+    # Clamp to a sane timezone range (±14h)
+    if tz_offset < -840 or tz_offset > 840:
+        tz_offset = 0
+    sessions = await list_chat_sessions(user_id, tz_offset_minutes=tz_offset)
+    return {"success": True, "sessions": sessions}
+
+
 @router.get("/history")
 async def get_history(
     user_id: int = Depends(require_user),
-    limit: int = 50,
+    limit: int = 200,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
 ):
-    """Return the persisted chat history for the logged-in user."""
-    if limit <= 0 or limit > 200:
-        limit = 50
-    messages = await fetch_chat_history(user_id, limit=limit)
+    """Return persisted chat history.
+
+    With `start`/`end` (ISO timestamps) returns one per-date room; otherwise
+    returns the most recent messages.
+    """
+    if limit <= 0 or limit > 500:
+        limit = 200
+    start_dt = _parse_iso(start)
+    end_dt = _parse_iso(end)
+    if start_dt or end_dt:
+        messages = await fetch_chat_history(user_id, limit=limit, start=start_dt, end=end_dt)
+    else:
+        messages = await fetch_chat_history(user_id, limit=min(limit, 50))
     return {"success": True, "messages": messages}
 
 

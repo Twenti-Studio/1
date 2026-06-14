@@ -22,6 +22,11 @@ model User {
   webLogin    String?  @unique @map("web_login")     // unique login username for dashboard
   webPassword String?  @map("web_password")           // hashed password
 
+  // Telegram linking (web account is primary; Telegram is optional/linked)
+  telegramId            BigInt?   @unique @map("telegram_id")              // linked Telegram chat/user id
+  telegramLinkCode      String?   @map("telegram_link_code")              // short-lived code for deep-link linking
+  telegramLinkExpiresAt DateTime? @map("telegram_link_expires_at")        // expiry for the link code
+
   // Trial system
   trialEndsAt DateTime? @map("trial_ends_at")         // 7-day free trial expiry
 

@@ -725,20 +725,122 @@ function AccountSecurityPanel({ user }) {
     );
 }
 
-function LinkedAccountsPanel({ user }) {
+function LinkedAccountsPanel() {
+    const [status, setStatus] = useState(null); // { linked, telegram_id }
+    const [link, setLink] = useState(null); // { code, deep_link }
+    const [busy, setBusy] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [msg, setMsg] = useState(null);
+
+    async function loadStatus() {
+        try {
+            const r = await fetch(`${API}/telegram/status`, { credentials: "include" });
+            if (r.ok) setStatus(await r.json());
+        } catch { /* ignore */ }
+    }
+
+    useEffect(() => { loadStatus(); }, []);
+
+    async function generateCode() {
+        setBusy(true); setMsg(null); setCopied(false);
+        try {
+            const r = await fetch(`${API}/telegram/link-code`, {
+                method: "POST", credentials: "include",
+            });
+            const data = await r.json();
+            if (r.ok && data.success) {
+                setLink(data);
+            } else {
+                setMsg({ type: "err", text: data.error || "Gagal membuat kode." });
+            }
+        } catch {
+            setMsg({ type: "err", text: "Tidak bisa terhubung ke server." });
+        } finally { setBusy(false); }
+    }
+
+    async function unlink() {
+        if (!window.confirm("Putuskan Telegram dari akun ini?")) return;
+        setBusy(true); setMsg(null);
+        try {
+            const r = await fetch(`${API}/telegram/unlink`, {
+                method: "POST", credentials: "include",
+            });
+            if (r.ok) { setLink(null); await loadStatus(); }
+        } catch { /* ignore */ } finally { setBusy(false); }
+    }
+
+    function copyCode() {
+        if (!link?.code) return;
+        navigator.clipboard?.writeText(link.code).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        });
+    }
+
+    const linked = status?.linked;
+
     return (
         <div className="space-y-3">
-            <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-sky-500/15 text-sky-300 flex items-center justify-center shrink-0 text-base">📨</div>
-                <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">Telegram</p>
-                    <p className="text-[0.65rem] text-white/40">
-                        ID: {user?.id || "—"}
-                    </p>
+            <div className="bg-card border border-border rounded-2xl p-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-sky-500/15 text-sky-300 flex items-center justify-center shrink-0 text-base">📨</div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold">Telegram</p>
+                        <p className="text-[0.65rem] text-white/40">
+                            {linked ? `ID: ${status.telegram_id}` : "Belum terhubung"}
+                        </p>
+                    </div>
+                    <span className={`px-2 py-0.5 text-[0.6rem] font-bold rounded uppercase tracking-wider ${linked ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-white/50"}`}>
+                        {linked ? "Terhubung" : "Belum"}
+                    </span>
                 </div>
-                <span className="px-2 py-0.5 text-[0.6rem] font-bold rounded uppercase tracking-wider bg-emerald-500/20 text-emerald-400">
-                    Terhubung
-                </span>
+
+                {msg && (
+                    <div className={`mt-3 text-xs rounded-lg px-3 py-2 ${msg.type === "err" ? "bg-rose-500/10 text-rose-300" : "bg-emerald-500/10 text-emerald-300"}`}>
+                        {msg.text}
+                    </div>
+                )}
+
+                {linked ? (
+                    <button
+                        onClick={unlink}
+                        disabled={busy}
+                        className="mt-3 w-full py-2.5 border border-rose-500/40 text-rose-400 text-sm font-semibold rounded-lg hover:bg-rose-500/10 disabled:opacity-40"
+                    >
+                        Putuskan Telegram
+                    </button>
+                ) : link ? (
+                    <div className="mt-3 space-y-3">
+                        <ol className="text-[0.7rem] text-white/60 space-y-1 list-decimal list-inside">
+                            <li>Tekan tombol di bawah untuk membuka bot Telegram.</li>
+                            <li>Tekan <b className="text-white/80">START</b> di chat @finot_finance_bot.</li>
+                            <li>Akun otomatis terhubung &amp; chat tersinkron.</li>
+                        </ol>
+                        <a
+                            href={link.deep_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block w-full text-center py-2.5 bg-orange text-white text-sm font-semibold rounded-lg hover:bg-orange-dark"
+                        >
+                            Buka Telegram &amp; Hubungkan
+                        </a>
+                        <button
+                            onClick={copyCode}
+                            className="w-full text-center text-[0.7rem] text-white/50 hover:text-orange"
+                        >
+                            {copied ? "Kode disalin ✓" : `Atau kirim manual: /start link_${link.code} (salin kode)`}
+                        </button>
+                        <p className="text-[0.6rem] text-white/30 text-center">Kode berlaku 15 menit.</p>
+                    </div>
+                ) : (
+                    <button
+                        onClick={generateCode}
+                        disabled={busy}
+                        className="mt-3 w-full py-2.5 bg-orange text-white text-sm font-semibold rounded-lg hover:bg-orange-dark disabled:opacity-40"
+                    >
+                        {busy ? "Membuat kode..." : "Hubungkan Telegram"}
+                    </button>
+                )}
             </div>
 
             <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3 opacity-60">
@@ -753,8 +855,8 @@ function LinkedAccountsPanel({ user }) {
             </div>
 
             <p className="text-[0.65rem] text-white/40 px-1">
-                Akun chat-app FiNot sudah otomatis terhubung dengan Telegram kamu.
-                Untuk menambah akun Telegram lain, mulai ulang dengan bot dari device baru.
+                Menautkan Telegram membuat catatan transaksimu tersinkron antara web app FiNot
+                dan chat bot Telegram (@finot_finance_bot).
             </p>
         </div>
     );

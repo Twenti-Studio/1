@@ -3,10 +3,10 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 const STEPS = [
   {
     num: "01",
-    title: "Mulai Chat dengan FiNot",
-    desc: "Klik 'Mulai Gratis' di halaman beranda — kamu langsung masuk ke chat app FiNot di browser. Tanpa registrasi panjang, tanpa form, tanpa verifikasi email.",
+    title: "Daftar & Mulai Chat dengan FiNot",
+    desc: "Klik 'Mulai Gratis' di halaman beranda, buat akun dengan username & password, dan kamu langsung masuk ke chat app FiNot di browser. Tanpa verifikasi email yang ribet.",
     detail:
-      "Lebih suka Telegram? Cari @finot_finance_bot lalu tekan START. WhatsApp segera hadir. Riwayat chat tersinkron antar platform yang sama akun.",
+      "Mau pakai dari Telegram juga? Setelah masuk, hubungkan akunmu lewat Pengaturan → Linked Accounts. Riwayat chat tersinkron otomatis antara web app dan Telegram. WhatsApp segera hadir.",
   },
   {
     num: "02",

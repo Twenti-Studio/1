@@ -345,20 +345,27 @@ async def create_app_user(
     password = req.password or _generate_password()
     hashed = _hash_password(password)
 
-    # Generate a unique ID (positive, based on timestamp)
+    # Web account id is independent of Telegram now. Generate a positive id;
+    # Telegram (if provided) is stored as a linked telegramId.
     new_id = int(time.time() * 1000) % (10**12)
-    if req.telegram_id:
-        new_id = req.telegram_id
-
-    # Make sure ID doesn't collide
     while await prisma.user.find_unique(where={"id": new_id}):
         new_id += 1
+
+    # Reject if the provided Telegram id is already linked elsewhere
+    if req.telegram_id:
+        existing_tg = await prisma.user.find_first(where={"telegramId": req.telegram_id})
+        if existing_tg:
+            return JSONResponse(
+                {"success": False, "error": "Telegram ID ini sudah tertaut ke akun lain."},
+                status_code=400,
+            )
 
     chosen_plan = req.plan if req.plan in ("free", "pro", "elite") else "free"
 
     user = await prisma.user.create(
         data={
             "id": new_id,
+            "telegramId": req.telegram_id if req.telegram_id else None,
             "displayName": req.display_name,
             "webLogin": web_login,
             "webPassword": hashed,
@@ -534,8 +541,9 @@ async def set_user_password(
             f"🔑 Password: <code>{password}</code>\n\n"
             f"⚠️ Segera ubah password setelah login!"
         )
-        await send_telegram_message(uid, msg)
-        notified = True
+        if user.telegramId:
+            await send_telegram_message(int(user.telegramId), msg)
+            notified = True
     except Exception as e:
         _logger.warning(f"Failed to send credentials to user {uid}: {e}")
 
@@ -645,7 +653,8 @@ async def generate_missing_credentials(admin: str = Depends(require_admin)):
                     f"⚠️ Segera ubah password setelah login!\n"
                     f"Ketik /help untuk bantuan."
                 )
-                await send_telegram_message(int(u.id), msg)
+                if u.telegramId:
+                    await send_telegram_message(int(u.telegramId), msg)
             except Exception as e:
                 _logger.warning(f"Failed to send credentials to user {u.id}: {e}")
 
@@ -739,8 +748,9 @@ async def generate_selected_credentials(
                     f"⚠️ Segera ubah password setelah login!\n"
                     f"Ketik /help untuk bantuan."
                 )
-                await send_telegram_message(uid, msg)
-                notified = True
+                if u.telegramId:
+                    await send_telegram_message(int(u.telegramId), msg)
+                    notified = True
             except Exception as e:
                 _logger.warning(f"Failed to send credentials to user {uid}: {e}")
 
@@ -881,12 +891,13 @@ async def admin_reply_report(
         },
     )
 
-    # Optionally notify the user via Telegram
+    # Optionally notify the user via Telegram (only if their account is linked)
     try:
         from app.webhook.telegram import send_telegram_message
-        if report.userId > 0:  # Only notify real Telegram users (positive ID)
+        reporter = await prisma.user.find_unique(where={"id": report.userId})
+        if reporter and reporter.telegramId:
             await send_telegram_message(
-                int(report.userId),
+                int(reporter.telegramId),
                 f"📬 <b>Balasan untuk laporan kamu:</b>\n\n"
                 f"<b>{report.subject}</b>\n\n"
                 f"{req.reply.strip()}\n\n"

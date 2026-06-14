@@ -142,8 +142,8 @@ export default function UserLogin() {
           <div className="mt-6 text-center">
             <p className="text-xs text-white/30">
               Belum punya akun?{" "}
-              <a href="/chat" className="text-orange hover:underline">
-                Mulai gratis
+              <a href="/register" className="text-orange hover:underline">
+                Daftar gratis
               </a>{" "}
               atau{" "}
               <a href="/pricing" className="text-orange hover:underline">
@@ -171,7 +171,8 @@ export default function UserLogin() {
           >
             <h2 className="text-lg font-bold text-white">Reset Password</h2>
             <p className="text-xs text-white/50 mt-1 mb-4">
-              Masukkan username kamu. Password baru akan dikirim ke Telegram (chat dari @finot_finance_bot).
+              Masukkan username kamu. Jika akunmu sudah menautkan Telegram, password baru
+              dikirim ke chat @finot_finance_bot.
             </p>
 
             {forgotMsg && (

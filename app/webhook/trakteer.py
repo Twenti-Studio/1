@@ -50,6 +50,7 @@ async def trakteer_webhook(request: Request):
             # Get user's web login info
             from app.db.connection import prisma as db
             user = await db.user.find_unique(where={"id": user_id})
+            telegram_chat_id = user.telegramId if user else None
             login_info = ""
             if user and user.webLogin:
                 login_info = (
@@ -73,18 +74,20 @@ async def trakteer_webhook(request: Request):
                 f"{login_info}"
             )
 
-            try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    await client.post(
-                        f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendMessage",
-                        json={
-                            "chat_id": user_id,
-                            "text": message,
-                            "parse_mode": "HTML",
-                        }
-                    )
-            except Exception as e:
-                logger.error(f"Failed to notify user: {e}")
+            # Only notify via Telegram if the account has a linked Telegram.
+            if telegram_chat_id:
+                try:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        await client.post(
+                            f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendMessage",
+                            json={
+                                "chat_id": telegram_chat_id,
+                                "text": message,
+                                "parse_mode": "HTML",
+                            }
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to notify user: {e}")
 
         return JSONResponse({"ok": True, **result})
 

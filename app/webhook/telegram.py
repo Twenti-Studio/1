@@ -131,13 +131,16 @@ async def send_telegram_message(
                 logger.error(f"Telegram sendMessage failed: {resp.status_code} {resp.text}")
             resp.raise_for_status()
 
-            # Mirror outbound bot reply into chat-app history (best-effort)
+            # Mirror outbound bot reply into chat-app history (best-effort).
+            # chat_id is a Telegram id → resolve the internal account id first.
             try:
                 from app.services.chat_service import save_chat_message
-                await save_chat_message(
-                    int(chat_id), "assistant", text, kind="text",
-                    meta={"source": "telegram"},
-                )
+                tg_user = await prisma.user.find_first(where={"telegramId": int(chat_id)})
+                if tg_user:
+                    await save_chat_message(
+                        int(tg_user.id), "assistant", text, kind="text",
+                        meta={"source": "telegram"},
+                    )
             except Exception as mirror_err:
                 logger.debug(f"chat-app mirror skipped: {mirror_err}")
 
@@ -646,12 +649,20 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         cb_message = callback_query.get("message", {})
         chat_id = cb_message.get("chat", {}).get("id")
         message_id = cb_message.get("message_id")
-        user_id = callback_query["from"]["id"]
+        telegram_id = callback_query["from"]["id"]
 
         if chat_id and cb_data:
+            # Resolve internal user id (account is keyed by web id; Telegram is linked)
+            try:
+                user = await get_or_create_user(prisma, telegram_id)
+                internal_id = int(user.id)
+            except Exception as e:
+                logger.error(f"Failed to resolve user for callback: {e}")
+                return JSONResponse({"ok": True})
+
             background_tasks.add_task(
                 _handle_callback_query,
-                cb_id, chat_id, user_id, message_id, cb_data,
+                cb_id, chat_id, internal_id, message_id, cb_data,
             )
 
         return JSONResponse({"ok": True})
@@ -662,7 +673,7 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         return JSONResponse({"ok": True})
 
     chat_id = message["chat"]["id"]
-    user_id = message["from"]["id"]
+    telegram_id = message["from"]["id"]
     username = message["from"].get("username")
     display_name = (
         message["from"].get("first_name", "")
@@ -670,20 +681,64 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         + message["from"].get("last_name", "")
     ).strip()
 
-    # Ensure user exists
+    # ── Account-linking deep link: "/start link_<code>" ──
+    # Handle BEFORE auto-creating a Telegram-only account so the Telegram id can
+    # be attached to the existing web account that generated the code.
+    text_raw = (message.get("text") or "").strip()
+    if text_raw.startswith("/start"):
+        parts = text_raw.split(maxsplit=1)
+        if len(parts) > 1 and parts[1].strip().startswith("link_"):
+            code = parts[1].strip()[len("link_"):]
+            background_tasks.add_task(_handle_link_command, chat_id, telegram_id, code)
+            return JSONResponse({"ok": True})
+
+    # Ensure user exists and resolve internal id
     try:
-        await get_or_create_user(
-            prisma, user_id, username=username, display_name=display_name
+        user = await get_or_create_user(
+            prisma, telegram_id, username=username, display_name=display_name
         )
+        internal_id = int(user.id)
     except Exception as e:
         logger.error(f"Failed to get/create user: {e}")
+        return JSONResponse({"ok": True})
 
-    # Route to handler based on message type
+    # Route to handler based on message type (internal id, not Telegram id)
     background_tasks.add_task(
-        _handle_update, chat_id, user_id, message
+        _handle_update, chat_id, internal_id, message
     )
 
     return JSONResponse({"ok": True})
+
+
+async def _handle_link_command(chat_id: int, telegram_id: int, code: str):
+    """Attach this Telegram account to the web account that generated `code`."""
+    from app.services.user_service import link_telegram_by_code
+
+    try:
+        result = await link_telegram_by_code(prisma, code, telegram_id)
+        if result.get("success"):
+            dashboard = _dashboard_base_url()
+            await send_telegram_message(
+                chat_id,
+                "✅ <b>Telegram berhasil terhubung!</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "Sekarang catatan transaksimu di Telegram dan di chat app FiNot "
+                "akan tersinkron otomatis.\n\n"
+                f"🔗 Buka chat app: {dashboard}/chat\n\n"
+                "Coba kirim transaksi seperti <i>beli kopi 15rb</i> 🚀",
+            )
+        else:
+            await send_telegram_message(
+                chat_id,
+                f"⚠️ <b>Gagal menghubungkan Telegram</b>\n\n"
+                f"{result.get('error', 'Kode tidak valid.')}\n\n"
+                f"Buat kode baru dari menu <b>Linked Accounts</b> di chat app FiNot.",
+            )
+    except Exception as e:
+        logger.error(f"link command failed: {e}", exc_info=True)
+        await send_telegram_message(
+            chat_id, "Terjadi kesalahan saat menghubungkan Telegram. Coba lagi."
+        )
 
 
 async def _handle_update(chat_id: int, user_id: int, message: dict):

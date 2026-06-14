@@ -5,11 +5,11 @@ import { Link } from "react-router-dom";
 const FAQS = [
   {
     q: "Apa itu FiNot?",
-    a: "FiNot adalah asisten keuangan berbasis AI. Kamu bisa pakai langsung lewat aplikasi chat di browser (web app FiNot), atau lewat Telegram / WhatsApp kalau lebih suka. Cukup kirim pesan chat biasa — seperti 'makan siang 35rb' — dan FiNot secara otomatis mencatat transaksimu, mengelompokkan ke kategori yang tepat, serta memberikan insight dan prediksi keuangan yang personal.",
+    a: "FiNot adalah asisten keuangan berbasis AI. Kamu pakai langsung lewat aplikasi chat di browser (web app FiNot) — cukup daftar akun dan langsung mulai. Kalau mau, akunmu juga bisa dihubungkan ke Telegram dari dalam app supaya bisa catat transaksi dari sana. Cukup kirim pesan chat biasa — seperti 'makan siang 35rb' — dan FiNot otomatis mencatat transaksimu, mengelompokkan ke kategori yang tepat, serta memberi insight dan prediksi keuangan personal.",
   },
   {
     q: "Bagaimana cara mulai menggunakan FiNot?",
-    a: "Paling cepat: klik tombol 'Mulai Gratis' di halaman ini — kamu langsung dibawa ke chat app FiNot. Tidak perlu registrasi panjang, isi form, atau verifikasi email. Alternatifnya, kamu juga bisa buka Telegram dan cari @finot_finance_bot lalu tekan START. Kedua cara terhubung ke akun yang sama, jadi riwayat chat akan tersinkron.",
+    a: "Klik tombol 'Mulai Gratis' di halaman ini, daftar dengan username & password, dan kamu langsung masuk ke chat app FiNot. Tanpa verifikasi email yang ribet. Setelah masuk, kalau ingin pakai dari Telegram, buka menu Pengaturan → Linked Accounts dan hubungkan Telegram-mu — riwayat chat akan tersinkron otomatis di kedua tempat.",
   },
   {
     q: "Apakah FiNot benar-benar gratis?",
@@ -41,7 +41,7 @@ const FAQS = [
   },
   {
     q: "FiNot tersedia di platform apa saja?",
-    a: "Saat ini FiNot tersedia di Telegram dan sedang dalam tahap pengembangan untuk WhatsApp. Kami memilih platform chat karena kamu tidak perlu install aplikasi tambahan — cukup buka chat dan langsung pakai. Semua fitur identik di kedua platform.",
+    a: "FiNot berjalan sebagai web app yang bisa kamu buka langsung di browser (dan dipasang sebagai PWA di HP). Selain itu, akunmu bisa dihubungkan ke Telegram dari dalam app supaya bisa catat transaksi dari sana juga — semua tersinkron. Integrasi WhatsApp sedang dalam pengembangan.",
   },
 ];
 
@@ -113,19 +113,11 @@ export default function Faq() {
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            to="/chat"
+            to="/register"
             className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
           >
-            Chat FiNot Sekarang
+            Mulai Gratis Sekarang
           </Link>
-          <a
-            href="https://t.me/finot_finance_bot"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-white/15 text-white/80 font-medium hover:bg-white/5 transition-colors text-sm"
-          >
-            Lewat Telegram
-          </a>
           <Link
             to="/pricing"
             className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-white/60 hover:text-white font-medium text-sm transition-colors"

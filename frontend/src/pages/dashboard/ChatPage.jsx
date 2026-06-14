@@ -1,10 +1,13 @@
 import {
     ArrowLeftOnRectangleIcon,
+    Bars3Icon,
     MicrophoneIcon,
     PaperAirplaneIcon,
     PaperClipIcon,
+    PlusIcon,
     StopIcon,
     TrashIcon,
+    XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +24,43 @@ function formatTime(iso) {
     return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
+function pad(n) {
+    return String(n).padStart(2, "0");
+}
+
+function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function tzOffset() {
+    // Minutes ahead of UTC (e.g. WIB = +420). Matches backend make_interval(mins).
+    return -new Date().getTimezoneOffset();
+}
+
+/** Local-day bounds for a "YYYY-MM-DD" string, returned as UTC ISO strings. */
+function dayBounds(dateStr) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const start = new Date(y, m - 1, d, 0, 0, 0, 0);
+    const end = new Date(y, m - 1, d + 1, 0, 0, 0, 0);
+    return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function dateLabel(dateStr) {
+    if (!dateStr) return "";
+    if (dateStr === todayStr()) return "Hari Ini";
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    const yStr = `${yest.getFullYear()}-${pad(yest.getMonth() + 1)}-${pad(yest.getDate())}`;
+    if (dateStr === yStr) return "Kemarin";
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    });
+}
+
 export default function ChatPage() {
     const { logout } = useUserAuth();
     const navigate = useNavigate();
@@ -31,22 +71,46 @@ export default function ChatPage() {
     const [error, setError] = useState("");
     const [menuOpen, setMenuOpen] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sessions, setSessions] = useState([]);
+    const [selectedDate, setSelectedDate] = useState(todayStr());
     const scrollRef = useRef(null);
     const fileInputRef = useRef(null);
     const recorderRef = useRef(null);
     const audioChunksRef = useRef([]);
 
+    async function loadSessions() {
+        try {
+            const res = await fetch(`${API}/sessions?tz_offset=${tzOffset()}`, {
+                credentials: "include",
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            setSessions(data.sessions || []);
+        } catch {
+            /* non-critical */
+        }
+    }
+
+    async function loadHistory(dateStr) {
+        const { start, end } = dayBounds(dateStr);
+        try {
+            const res = await fetch(
+                `${API}/history?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+                { credentials: "include" }
+            );
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setMessages(data.messages || []);
+        } catch {
+            setError("Gagal memuat riwayat chat");
+        }
+    }
+
     useEffect(() => {
-        (async () => {
-            try {
-                const res = await fetch(`${API}/history`, { credentials: "include" });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                setMessages(data.messages || []);
-            } catch {
-                setError("Gagal memuat riwayat chat");
-            }
-        })();
+        loadSessions();
+        loadHistory(todayStr());
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -54,6 +118,28 @@ export default function ChatPage() {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages, sending]);
+
+    function selectDate(dateStr) {
+        setSelectedDate(dateStr);
+        loadHistory(dateStr);
+        setSidebarOpen(false);
+    }
+
+    function newChat() {
+        const t = todayStr();
+        setSelectedDate(t);
+        loadHistory(t);
+        setSidebarOpen(false);
+    }
+
+    /** Make sure new messages land in today's room before sending. */
+    async function ensureToday() {
+        const t = todayStr();
+        if (selectedDate !== t) {
+            setSelectedDate(t);
+            await loadHistory(t);
+        }
+    }
 
     function appendLocalUser(content, kind = "text") {
         setMessages((prev) => [
@@ -86,6 +172,7 @@ export default function ChatPage() {
     async function sendText() {
         const text = input.trim();
         if (!text || sending) return;
+        await ensureToday();
         appendLocalUser(text, "text");
         setInput("");
         setSending(true);
@@ -100,6 +187,7 @@ export default function ChatPage() {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             appendAssistant(data.messages || []);
+            loadSessions();
         } catch {
             setError("Gagal mengirim pesan. Coba lagi.");
         } finally {
@@ -115,6 +203,7 @@ export default function ChatPage() {
             setError("Hanya gambar atau audio yang didukung.");
             return;
         }
+        await ensureToday();
         appendLocalUser(isImage ? "[foto struk]" : "[pesan suara]", isImage ? "image" : "audio");
         setSending(true);
         setError("");
@@ -130,6 +219,7 @@ export default function ChatPage() {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             appendAssistant(data.messages || []);
+            loadSessions();
         } catch {
             setError("Gagal memproses lampiran.");
         } finally {
@@ -175,6 +265,8 @@ export default function ChatPage() {
         try {
             await fetch(`${API}/history`, { method: "DELETE", credentials: "include" });
             setMessages([]);
+            setSessions([]);
+            setSelectedDate(todayStr());
         } catch {
             setError("Gagal menghapus riwayat.");
         }
@@ -186,31 +278,53 @@ export default function ChatPage() {
         navigate("/login", { replace: true });
     }
 
+    const viewingPast = selectedDate !== todayStr();
+
     return (
         <div className="h-full flex flex-col bg-bg" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-            {/* Header — click to open features drawer */}
-            <header className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-navy-dark/95 backdrop-blur">
+            {/* Header */}
+            <header className="flex-shrink-0 flex items-center gap-2 px-3 py-3 border-b border-border bg-navy-dark/95 backdrop-blur">
+                <button
+                    type="button"
+                    onClick={() => setSidebarOpen(true)}
+                    className="p-2 -ml-1 text-white/60 hover:text-white"
+                    aria-label="Buka riwayat chat"
+                >
+                    <Bars3Icon className="w-5 h-5" />
+                </button>
+
                 <button
                     type="button"
                     onClick={() => setDrawerOpen(true)}
-                    className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-90 active:opacity-80 transition-opacity"
+                    className="flex items-center gap-2.5 flex-1 min-w-0 text-left hover:opacity-90 active:opacity-80 transition-opacity"
                     aria-label="Buka menu fitur"
                 >
                     <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
-                            <Logo className="h-6 w-auto" />
+                        <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                            <Logo className="h-5 w-auto" />
                         </div>
                         <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-navy-dark" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">Asisten FiNot</p>
-                        <p className="text-[0.7rem] text-emerald-400">Aktif Sekarang</p>
+                        <p className="text-sm font-semibold text-white truncate">{dateLabel(selectedDate)}</p>
+                        <p className="text-[0.7rem] text-emerald-400">Asisten FiNot</p>
                     </div>
                 </button>
+
+                <button
+                    type="button"
+                    onClick={newChat}
+                    className="p-2 text-white/60 hover:text-orange"
+                    title="Chat baru (hari ini)"
+                    aria-label="Chat baru"
+                >
+                    <PlusIcon className="w-5 h-5" />
+                </button>
+
                 <div className="relative">
                     <button
                         onClick={() => setMenuOpen((v) => !v)}
-                        className="p-2 -mr-2 text-white/60 hover:text-white"
+                        className="p-2 -mr-1 text-white/60 hover:text-white"
                         title="Menu"
                         aria-label="Menu"
                     >
@@ -242,9 +356,15 @@ export default function ChatPage() {
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
                 {messages.length === 0 && (
                     <div className="text-center text-white/40 text-sm py-16 px-4">
-                        Halo! Mulai catat transaksi atau tanya FiNot apa saja.<br />
-                        Contoh: <span className="text-white/60">"beli makan 25rb"</span> atau{" "}
-                        <span className="text-white/60">"gajian 5jt"</span>.
+                        {viewingPast ? (
+                            <>Tidak ada chat di {dateLabel(selectedDate)}.</>
+                        ) : (
+                            <>
+                                Halo! Mulai catat transaksi atau tanya FiNot apa saja.<br />
+                                Contoh: <span className="text-white/60">"beli makan 25rb"</span> atau{" "}
+                                <span className="text-white/60">"gajian 5jt"</span>.
+                            </>
+                        )}
                     </div>
                 )}
                 {messages.map((m) => (<MessageBubble key={m.id} msg={m} />))}
@@ -257,6 +377,16 @@ export default function ChatPage() {
                     </div>
                 )}
             </div>
+
+            {viewingPast && (
+                <button
+                    type="button"
+                    onClick={newChat}
+                    className="flex-shrink-0 px-4 py-2 text-[0.7rem] text-orange/90 bg-orange/10 border-t border-orange/20 hover:bg-orange/15"
+                >
+                    Kamu melihat chat lama. Ketuk untuk kembali ke chat hari ini →
+                </button>
+            )}
 
             {error && (
                 <div className="flex-shrink-0 px-4 py-2 text-xs text-red-300 bg-red-500/10 border-t border-red-500/20">{error}</div>
@@ -302,12 +432,81 @@ export default function ChatPage() {
                 )}
             </form>
 
+            {/* History sidebar (closed by default, opens from the left) */}
+            <ChatSidebar
+                open={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+                sessions={sessions}
+                selectedDate={selectedDate}
+                onSelect={selectDate}
+                onNewChat={newChat}
+            />
+
             {/* Features drawer (opened by tapping the chat header) */}
             <FeaturesDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-            {/* PWA install prompt (Android/Chrome native, iOS manual guide) */}
+            {/* PWA install prompt */}
             <PWAInstallPrompt />
         </div>
+    );
+}
+
+function ChatSidebar({ open, onClose, sessions, selectedDate, onSelect, onNewChat }) {
+    const today = todayStr();
+    const hasToday = sessions.some((s) => s.date === today);
+    // Always surface a "today" entry so the user can jump back even with no messages yet.
+    const list = hasToday ? sessions : [{ date: today, count: 0 }, ...sessions];
+
+    return (
+        <>
+            <div
+                className={`fixed inset-0 z-50 bg-black/60 transition-opacity ${open ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                onClick={onClose}
+            />
+            <aside
+                className={`fixed top-0 left-0 z-50 h-full w-72 max-w-[80%] bg-navy-dark border-r border-border flex flex-col transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full"}`}
+                style={{ paddingTop: "env(safe-area-inset-top)" }}
+            >
+                <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
+                    <p className="text-sm font-semibold text-white">Riwayat Chat</p>
+                    <button onClick={onClose} className="p-1.5 -mr-1.5 text-white/50 hover:text-white" aria-label="Tutup">
+                        <XMarkIcon className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <button
+                    onClick={onNewChat}
+                    className="flex items-center gap-2 mx-3 mt-3 px-3 py-2.5 rounded-xl bg-orange/15 text-orange text-sm font-semibold hover:bg-orange/25 transition-colors"
+                >
+                    <PlusIcon className="w-4 h-4" /> Chat Baru
+                </button>
+
+                <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+                    {list.length === 0 && (
+                        <p className="text-center text-white/40 text-xs py-8">Belum ada riwayat.</p>
+                    )}
+                    {list.map((s) => {
+                        const active = s.date === selectedDate;
+                        return (
+                            <button
+                                key={s.date}
+                                onClick={() => onSelect(s.date)}
+                                className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-left transition-colors ${active ? "bg-orange/20 text-white" : "text-white/70 hover:bg-white/5"}`}
+                            >
+                                <span className="text-sm font-medium truncate">{dateLabel(s.date)}</span>
+                                {s.count > 0 && (
+                                    <span className="text-[0.6rem] text-white/40 shrink-0">{s.count}</span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <p className="px-4 py-3 text-[0.6rem] text-white/30 border-t border-border">
+                    Tiap tanggal jadi satu room chat — tersinkron otomatis dengan Telegram.
+                </p>
+            </aside>
+        </>
     );
 }
 
