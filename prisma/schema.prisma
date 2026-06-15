@@ -22,6 +22,10 @@ model User {
   webLogin    String?  @unique @map("web_login")     // unique login username for dashboard
   webPassword String?  @map("web_password")           // hashed password
 
+  // Email + magic-link verification (email verify on register, password reset)
+  email           String?   @unique                          // login/contact email
+  emailVerifiedAt DateTime? @map("email_verified_at")        // set when the verify magic link is clicked
+
   // Telegram linking (web account is primary; Telegram is optional/linked)
   telegramId            BigInt?   @unique @map("telegram_id")              // linked Telegram chat/user id
   telegramLinkCode      String?   @map("telegram_link_code")              // short-lived code for deep-link linking
@@ -47,8 +51,42 @@ model User {
   aiConversations AiConversation[]
   reports         Report[]
   chatMessages    ChatMessage[]
+  pushSubscriptions PushSubscription[]
+  authTokens      AuthToken[]
 
   @@map("users")
+}
+
+// Magic-link / one-time auth tokens (email verification & password reset)
+model AuthToken {
+  id        Int       @id @default(autoincrement())
+  userId    BigInt    @map("user_id")
+  tokenHash String    @unique @map("token_hash")   // sha256 of the raw token
+  purpose   String                                  // verify_email | reset_password
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("auth_tokens")
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  endpoint  String   @unique @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  prefs     Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 // FiNot in-app chat messages (transport: web chat UI)

@@ -10,7 +10,7 @@ const STATUS_LABELS = {
 const STATUS_COLORS = {
     open: "#f59e0b",
     in_progress: "#3b82f6",
-    resolved: "#22c55e",
+    resolved: "#327dc4",
     closed: "#6b7280",
 };
 

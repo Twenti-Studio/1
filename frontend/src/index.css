@@ -2,31 +2,53 @@
 
 /* ── Custom Theme ──────────────────────── */
 @theme {
-  --color-navy: #1c1f26;
-  --color-navy-dark: #13151a;
-  --color-navy-light: #2a2d36;
+  /* Brand Core (Biru & Oranye Utama) */
+  --color-navy: #123a73;
+  --color-navy-dark: #08152b;
+  --color-navy-light: #1d5598;
   --color-orange: #F5841F;
   --color-orange-dark: #d9721a;
   --color-orange-light: #ffb347;
-  --color-bg: #0f1114;
-  --color-card: #191c22;
-  --color-border: rgba(255, 255, 255, 0.06);
+  
+  /* Background & Card Layout (Deep Dark Finansial - Menggunakan rekomendasi #0F172A / #0d213f) */
+  --color-bg: #0f172a;
+  --color-card: #1e293b;
+  --color-border: rgba(245, 132, 31, 0.15); /* Menggunakan subtle orange tint untuk border gelap */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  /* ── Ledger marketing theme (scoped to public pages) ── */
-  --color-ink: #0b1f17;          /* page bg — deep ledger green-black */
-  --color-ink-soft: #0f2a1e;     /* raised surface */
-  --color-ink-2: #123626;        /* hover / second surface */
-  --color-ledger-line: rgba(232, 224, 198, 0.14); /* hairline ruling on ink */
-  --color-paper: #f2ead6;        /* ledger paper — small surfaces only */
-  --color-paper-line: rgba(20, 45, 32, 0.16);
-  --color-paper-ink: #1a2c22;    /* text on paper */
-  --color-paper-mut: #6a7268;    /* muted text on paper */
-  --color-credit: #5fbf8b;       /* income / positive figures */
-  --color-debit: #db8a6e;        /* expense sign */
-  --color-moss: #2f6b4a;         /* mid-green accent / borders */
-  --color-fog: #9db3a6;          /* muted text on ink */
-  --color-cream: #eef2e9;        /* primary text on ink */
+  /* ── Ledger marketing theme — LIGHT (kolaborasi dengan logo navy + oranye) ── */
+  --color-ink: #f0f2f5;       /* page background — soft light gray */
+  --color-ink-soft: #ffffff;  /* cards / raised surfaces */
+  --color-ink-2: #e6eaf1;     /* hover / secondary surface, chat bubble */
+  --color-ledger-line: rgba(18, 58, 115, 0.12); /* navy hairline on light */
+  --color-paper: #f8f9fa;     /* ledger paper element (soft gray) */
+  --color-paper-line: rgba(18, 58, 115, 0.12);
+  --color-paper-ink: #101a35;
+  --color-paper-mut: #64748b;
+
+  /* Semantik Finansial */
+  --color-credit: #059669; /* emerald-600 — uang masuk / positif (kontras di latar terang) */
+  --color-debit: #dc2626;  /* red-600 — uang keluar */
+  --color-moss: #123a73;   /* brand navy — struktur (eyebrow, border, focus) */
+  --color-fog: #5b667a;    /* slate — teks sekunder di latar terang */
+  --color-cream: #101a35;  /* deep navy — teks utama/heading di latar terang */
+
+  /* Legacy semantic utility names (Disesuaikan agar Oranye & Biru mendominasi komponen default) */
+  --color-emerald-50: #fff7ed;  /* Diarahkan ke tint Oranye Muda untuk efek highlight soft */
+  --color-emerald-200: #ffedd5;
+  --color-emerald-300: #fed7aa;
+  --color-emerald-400: #fdba74;
+  --color-emerald-500: #f5841f; /* Oranye Utama */
+  --color-emerald-600: #d9721a;
+  --color-emerald-700: #b45309;
+  
+  --color-green-50: #f0fdf4;   /* Tetap disisakan sedikit akses hijau murni untuk indikator "Uang Masuk/Profit" */
+  --color-green-200: #bbf7d0;
+  --color-green-400: #4ade80;
+  --color-green-500: #10b981;  /* Hijau Finansial */
+  --color-green-600: #059669;
+  --color-green-700: #047857;
+  
   --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
 }
@@ -37,7 +59,7 @@ html {
 }
 
 body {
-  @apply bg-bg text-white antialiased;
+  @apply bg-bg text-slate-100 antialiased; /* Mengubah text-white ke text-slate-100 agar lebih premium di mata */
 }
 
 /* ── Scrollbar ─────────────────────────── */
@@ -48,7 +70,7 @@ body {
   background: var(--color-bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-navy-light);
+  background: #334155; /* Mengubah abu-abu terang ke gelap agar menyatu dengan tema background baru */
   border-radius: 3px;
 }
 
@@ -70,8 +92,8 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.05); }
-  50% { box-shadow: 0 0 35px rgba(255, 255, 255, 0.1); }
+  0%, 100% { box-shadow: 0 0 20px rgba(245, 132, 31, 0.05); } /* Glow efek menggunakan warna oranye halus */
+  50% { box-shadow: 0 0 35px rgba(245, 132, 31, 0.15); }
 }
 .animate-pulse-glow {
   animation: pulse-glow 3s ease-in-out infinite;
@@ -83,41 +105,22 @@ body {
 }
 
 /* ── Ledger helpers (marketing) ──────────── */
-/* Tabular figures: money lines up column-perfect */
 .tnum {
   font-feature-settings: "tnum" 1, "lnum" 1;
   font-variant-numeric: tabular-nums lining-nums;
 }
 
-/* Hairline ruled paper — horizontal ledger lines */
 .ledger-ruled {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 39px,
-    var(--color-paper-line) 39px,
-    var(--color-paper-line) 40px
-  );
+  background-image: none;
 }
 
-/* Faint column grid for ink-toned ledger panels */
 .ink-ruled {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 47px,
-    var(--color-ledger-line) 47px,
-    var(--color-ledger-line) 48px
-  );
+  background-image: none;
 }
 
-/* Perforated tear edge for receipt elements */
 .tear-edge {
-  --tear: 9px;
-  -webkit-mask:
-    radial-gradient(var(--tear) at 50% 0, transparent 99%, #000) 0 0 / 18px 100%;
-  mask:
-    radial-gradient(var(--tear) at 50% 0, transparent 99%, #000) 0 0 / 18px 100%;
+  -webkit-mask: none;
+  mask: none;
 }
 
 @keyframes post-row {
@@ -128,7 +131,7 @@ body {
 .animate-post-row { animation: post-row 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
 @keyframes balance-tick {
-  0% { background-color: rgba(95, 191, 139, 0.28); }
+  0% { background-color: rgba(245, 132, 31, 0.2); } /* Menggunakan tint oranye saat ada perubahan saldo */
   100% { background-color: transparent; }
 }
 .animate-balance-tick { animation: balance-tick 1.1s ease-out both; }

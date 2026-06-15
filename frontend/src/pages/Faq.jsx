@@ -1,19 +1,20 @@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
 const FAQS = [
   {
     q: "Apa itu FiNot?",
-    a: "FiNot adalah asisten keuangan berbasis AI. Kamu pakai langsung lewat aplikasi chat di browser (web app FiNot) — cukup daftar akun dan langsung mulai. Kalau mau, akunmu juga bisa dihubungkan ke Telegram dari dalam app supaya bisa catat transaksi dari sana. Cukup kirim pesan chat biasa — seperti 'makan siang 35rb' — dan FiNot otomatis mencatat transaksimu, mengelompokkan ke kategori yang tepat, serta memberi insight dan prediksi keuangan personal.",
+    a: "FiNot adalah asisten keuangan berbasis AI. Kamu pakai langsung lewat aplikasi chat di browser (web app FiNot), cukup daftar akun dan langsung mulai. Kalau mau, akunmu juga bisa dihubungkan ke Telegram dari dalam app supaya bisa catat transaksi dari sana. Cukup kirim pesan chat biasa, seperti 'makan siang 35rb', dan FiNot otomatis mencatat transaksimu, mengelompokkan ke kategori yang tepat, serta memberi insight dan prediksi keuangan personal.",
   },
   {
     q: "Bagaimana cara mulai menggunakan FiNot?",
-    a: "Klik tombol 'Mulai Gratis' di halaman ini, daftar dengan username & password, dan kamu langsung masuk ke chat app FiNot. Tanpa verifikasi email yang ribet. Setelah masuk, kalau ingin pakai dari Telegram, buka menu Pengaturan → Linked Accounts dan hubungkan Telegram-mu — riwayat chat akan tersinkron otomatis di kedua tempat.",
+    a: "Klik tombol 'Mulai Gratis' di halaman ini, daftar dengan username & password, dan kamu langsung masuk ke chat app FiNot. Tanpa verifikasi email yang ribet. Setelah masuk, kalau ingin pakai dari Telegram, buka menu Pengaturan → Linked Accounts dan hubungkan Telegram-mu, riwayat chat akan tersinkron otomatis di kedua tempat.",
   },
   {
     q: "Apakah FiNot benar-benar gratis?",
-    a: "Ya! Paket Gratis memperbolehkan kamu mencatat hingga 5 transaksi per hari lewat chat, menikmati kategorisasi otomatis, prediksi saldo, dan simulasi tabungan — semuanya gratis selamanya. Jika butuh fitur lebih seperti scan struk OCR, voice note, dan analisis AI harian, kamu bisa upgrade ke Pro (Rp19.000/bulan) atau Elite (Rp49.000/bulan).",
+    a: "Ya! Paket Gratis memperbolehkan kamu mencatat hingga 5 transaksi per hari lewat chat, menikmati kategorisasi otomatis, prediksi saldo, dan simulasi tabungan, semuanya gratis selamanya. Jika butuh fitur lebih seperti scan struk OCR, voice note, dan analisis AI harian, kamu bisa upgrade ke Pro (Rp19.000/bulan) atau Elite (Rp49.000/bulan).",
   },
   {
     q: "Apa bedanya paket Pro dan Elite?",
@@ -21,7 +22,7 @@ const FAQS = [
   },
   {
     q: "Bagaimana cara membayar?",
-    a: "Semua pembayaran menggunakan QRIS — yang berarti kamu bisa bayar lewat GoPay, OVO, DANA, ShopeePay, LinkAja, atau mobile banking apapun yang mendukung QRIS. Setelah memilih paket dan memasukkan username kamu, akan muncul QR code yang tinggal kamu scan. Pembayaran terverifikasi otomatis dalam hitungan detik.",
+    a: "Semua pembayaran menggunakan QRIS, yang berarti kamu bisa bayar lewat GoPay, OVO, DANA, ShopeePay, LinkAja, atau mobile banking apapun yang mendukung QRIS. Setelah memilih paket dan memasukkan username kamu, akan muncul QR code yang tinggal kamu scan. Pembayaran terverifikasi otomatis dalam hitungan detik.",
   },
   {
     q: "Apakah data keuangan saya aman?",
@@ -33,7 +34,7 @@ const FAQS = [
   },
   {
     q: "Apakah bisa voice note?",
-    a: "Tentu! Terlalu sibuk mengetik? Kirim voice note seperti \"beli bensin lima puluh ribu\" — AI mengenali ucapanmu, mengekstrak jumlah dan kategori, lalu mencatatnya otomatis. Tersedia untuk Pro (10x/hari) dan Elite (unlimited).",
+    a: "Tentu! Terlalu sibuk mengetik? Kirim voice note seperti \"beli bensin lima puluh ribu\", AI mengenali ucapanmu, mengekstrak jumlah dan kategori, lalu mencatatnya otomatis. Tersedia untuk Pro (10x/hari) dan Elite (unlimited).",
   },
   {
     q: "Bisa berhenti berlangganan kapan saja?",
@@ -41,7 +42,7 @@ const FAQS = [
   },
   {
     q: "FiNot tersedia di platform apa saja?",
-    a: "FiNot berjalan sebagai web app yang bisa kamu buka langsung di browser (dan dipasang sebagai PWA di HP). Selain itu, akunmu bisa dihubungkan ke Telegram dari dalam app supaya bisa catat transaksi dari sana juga — semua tersinkron. Integrasi WhatsApp sedang dalam pengembangan.",
+    a: "FiNot berjalan sebagai web app yang bisa kamu buka langsung di browser (dan dipasang sebagai PWA di HP). Selain itu, akunmu bisa dihubungkan ke Telegram dari dalam app supaya bisa catat transaksi dari sana juga, semua tersinkron. Integrasi WhatsApp sedang dalam pengembangan.",
   },
 ];
 
@@ -113,7 +114,7 @@ export default function Faq() {
             Masih punya pertanyaan?
           </h2>
           <p className="text-fog max-w-md mx-auto leading-relaxed">
-            Langsung chat ke FiNot — AI kami siap menjawab 24/7.
+            Langsung chat ke FiNot, AI kami siap menjawab 24/7.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-1">
             <Link
@@ -126,7 +127,7 @@ export default function Faq() {
               to="/pricing"
               className="inline-flex items-center gap-1.5 px-5 py-3.5 text-fog hover:text-cream font-medium transition-colors"
             >
-              Lihat paket harga →
+              Lihat paket harga <ArrowRightIcon className="w-4 h-4" />
             </Link>
           </div>
         </div>

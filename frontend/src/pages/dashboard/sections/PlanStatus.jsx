@@ -38,7 +38,7 @@ export default function PlanStatus({ dashboardData }) {
 
       {/* Plan badge */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="px-3 py-1.5 bg-linear-to-r from-orange to-orange-dark text-white text-sm font-bold rounded-lg capitalize">
+        <span className="px-3 py-1.5 bg-orange text-white text-sm font-bold rounded-lg capitalize">
           {plan}
         </span>
         <span className="text-xs text-white/40">Aktif</span>
@@ -56,7 +56,7 @@ export default function PlanStatus({ dashboardData }) {
         </div>
         <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full bg-linear-to-r from-orange to-amber-400 transition-all duration-500"
+            className="h-full rounded-full bg-orange transition-all duration-500"
             style={{ width: `${creditPercent}%` }}
           />
         </div>

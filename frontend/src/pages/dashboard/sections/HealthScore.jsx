@@ -4,10 +4,10 @@ import { useDashboardAPI } from "../../../hooks/useDashboardAPI";
 const Spinner = () => <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />;
 
 function getScoreColor(score) {
-  if (score >= 80) return { ring: "text-emerald-400", bg: "from-emerald-500/20 to-emerald-500/5", label: "Sangat Baik" };
-  if (score >= 60) return { ring: "text-sky-400", bg: "from-sky-500/20 to-sky-500/5", label: "Baik" };
-  if (score >= 40) return { ring: "text-amber-400", bg: "from-amber-500/20 to-amber-500/5", label: "Cukup" };
-  return { ring: "text-rose-400", bg: "from-rose-500/20 to-rose-500/5", label: "Perlu Perhatian" };
+  if (score >= 80) return { ring: "text-sky-400", label: "Sangat Baik" };
+  if (score >= 60) return { ring: "text-blue-400", label: "Baik" };
+  if (score >= 40) return { ring: "text-orange", label: "Cukup" };
+  return { ring: "text-rose-400", label: "Perlu Perhatian" };
 }
 
 export default function HealthScore() {

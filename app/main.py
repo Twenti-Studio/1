@@ -23,6 +23,7 @@ from app.routers.admin import router as admin_router
 from app.routers.landing_api import router as landing_api_router
 from app.routers.user_dashboard import router as user_dashboard_router
 from app.routers.chat import router as chat_router
+from app.routers.push import router as push_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -79,6 +80,7 @@ async def _send_weekly_summaries():
         check_feature_access, get_user_plan, check_ai_credits, consume_ai_credit,
     )
     from app.webhook.telegram import send_telegram_message
+    from app.services.push_service import send_push_to_user
     from worker.analysis_service import get_weekly_analysis, get_weekly_strategy
 
     logger.info("📊 Starting weekly summary broadcast...")
@@ -145,10 +147,25 @@ async def _send_weekly_summaries():
                 except Exception:
                     pass
 
-                # Send via Telegram (user.id IS the Telegram chat_id)
-                await send_telegram_message(int(user.id), message)
-                await consume_ai_credit(int(user.id), amount=3)
-                sent_count += 1
+                plain_summary = (
+                    f"Pemasukan Rp{data.get('total_income', 0):,}, "
+                    f"pengeluaran Rp{data.get('total_expense', 0):,}. "
+                    f"{data.get('insight', '')}"
+                ).strip()
+                delivered = 0
+                if user.telegramId is not None:
+                    await send_telegram_message(int(user.telegramId), message)
+                    delivered += 1
+                delivered += await send_push_to_user(
+                    int(user.id),
+                    "Ringkasan Mingguan FiNot",
+                    plain_summary,
+                    url="/dashboard/insight",
+                    category="weekly_summary",
+                )
+                if delivered:
+                    await consume_ai_credit(int(user.id), amount=3)
+                    sent_count += 1
 
                 # Small delay to avoid Telegram rate limits
                 await asyncio.sleep(0.5)
@@ -196,6 +213,7 @@ async def _send_daily_notifications():
     """Send smart notifications to all eligible premium users."""
     from app.services.subscription_service import get_user_plan, check_ai_credits
     from app.webhook.telegram import send_telegram_message
+    from app.services.push_service import send_push_to_user
     from worker.analysis_service import get_smart_notification
 
     logger.info("📢 Starting daily notification broadcast...")
@@ -234,8 +252,23 @@ async def _send_daily_notifications():
                     lines.append("")
 
                 message = "\n".join(lines)
-                await send_telegram_message(int(user.id), message)
-                sent_count += 1
+                plain_message = " ".join(
+                    str(alert.get("message", "")) for alert in alerts[:3]
+                ).strip()
+
+                delivered = 0
+                if user.telegramId is not None:
+                    await send_telegram_message(int(user.telegramId), message)
+                    delivered += 1
+                delivered += await send_push_to_user(
+                    int(user.id),
+                    "Pengingat FiNot",
+                    plain_message or "Ada insight keuangan baru untukmu.",
+                    url="/dashboard/insight",
+                    category="spending_alert",
+                )
+                if delivered:
+                    sent_count += 1
 
                 await asyncio.sleep(0.5)  # rate limit
 
@@ -323,6 +356,7 @@ app.include_router(admin_router)
 app.include_router(landing_api_router)
 app.include_router(user_dashboard_router)
 app.include_router(chat_router)
+app.include_router(push_router)
 
 # Templates removed — admin dashboard is now part of the React SPA
 

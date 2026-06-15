@@ -25,7 +25,7 @@ const STEPS = [
   {
     num: "04",
     title: "Terima insight yang actionable",
-    desc: "Dapatkan ringkasan harian, laporan mingguan setiap Senin, dan analisis mendalam setiap bulan — langsung di chatmu.",
+    desc: "Dapatkan ringkasan harian, laporan mingguan setiap Senin, dan analisis mendalam setiap bulan, langsung di chatmu.",
     detail:
       "Tiap insight mencakup breakdown per kategori, perbandingan dengan periode sebelumnya, saran penghematan spesifik, dan proyeksi saldo ke depan.",
   },
@@ -67,11 +67,11 @@ export default function HowItWorks() {
           Mulai dalam <span className="text-credit">30 detik.</span>
         </h1>
         <p className="text-fog max-w-xl mx-auto leading-relaxed">
-          Dari nol sampai punya insight keuangan — semua otomatis lewat satu chat.
+          Dari nol sampai punya insight keuangan, semua otomatis lewat satu chat.
         </p>
       </section>
 
-      {/* Steps — journal entries */}
+      {/* Steps, journal entries */}
       <section className="max-w-3xl mx-auto px-6 pb-16">
         <div className="relative">
           <div className="absolute left-[1.85rem] top-2 bottom-2 w-px bg-ledger-line hidden sm:block" />

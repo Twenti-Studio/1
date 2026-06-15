@@ -1,3 +1,4 @@
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import { useEffect, useRef, useState } from "react";
 
 /* The signature: a casual chat line is typed, then "posted" as a row in a
@@ -97,7 +98,7 @@ export default function LedgerPosting() {
   }, [reduced]);
 
   return (
-    <div className="bg-ink-soft rounded-2xl border border-moss/40 shadow-2xl shadow-black/40 overflow-hidden">
+    <div className="bg-ink-soft rounded-2xl border border-ledger-line shadow-xl shadow-[#123a73]/10 overflow-hidden">
       {/* Chat region */}
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-center gap-2 mb-3">
@@ -121,7 +122,9 @@ export default function LedgerPosting() {
             </>
           )}
           {phase === "posted" && (
-            <span className="font-mono text-[0.62rem] text-credit">✓ Tercatat ke buku besar</span>
+            <span className="inline-flex items-center gap-1 font-mono text-[0.62rem] text-credit">
+              <CheckCircleIcon className="w-3.5 h-3.5" /> Tercatat ke buku besar
+            </span>
           )}
         </div>
       </div>

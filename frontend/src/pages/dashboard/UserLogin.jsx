@@ -1,11 +1,11 @@
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Logo from "../../components/Logo";
 import { useUserAuth } from "../../context/UserAuthContext";
 
 export default function UserLogin() {
-  const { user, login } = useUserAuth();
+  const { user, login, requestPasswordReset } = useUserAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -13,34 +13,25 @@ export default function UserLogin() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
-  const [forgotUser, setForgotUser] = useState("");
+  const [forgotEmail, setForgotEmail] = useState("");
   const [forgotMsg, setForgotMsg] = useState(null);
   const [forgotBusy, setForgotBusy] = useState(false);
 
   async function submitForgot(e) {
     e.preventDefault();
     setForgotMsg(null);
-    if (!forgotUser.trim()) {
-      setForgotMsg({ type: "err", text: "Isi username dulu." });
+    const em = forgotEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) {
+      setForgotMsg({ type: "err", text: "Masukkan email yang valid." });
       return;
     }
     setForgotBusy(true);
-    try {
-      const r = await fetch("/api/user/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: forgotUser.trim() }),
-      });
-      const data = await r.json();
-      if (r.ok && data.success) {
-        setForgotMsg({ type: "ok", text: data.message });
-      } else {
-        setForgotMsg({ type: "err", text: data.error || "Gagal mengirim." });
-      }
-    } catch {
-      setForgotMsg({ type: "err", text: "Tidak bisa terhubung ke server." });
-    } finally {
-      setForgotBusy(false);
+    const res = await requestPasswordReset(em);
+    setForgotBusy(false);
+    if (res.success) {
+      setForgotMsg({ type: "ok", text: res.message });
+    } else {
+      setForgotMsg({ type: "err", text: res.error || "Gagal mengirim." });
     }
   }
 
@@ -134,7 +125,7 @@ export default function UserLogin() {
 
           <button
             type="button"
-            onClick={() => { setForgotOpen(true); setForgotUser(username); setForgotMsg(null); }}
+            onClick={() => { setForgotOpen(true); setForgotEmail(""); setForgotMsg(null); }}
             className="mt-3 w-full text-center text-xs text-fog hover:text-credit transition-colors"
           >
             Lupa password?
@@ -155,8 +146,8 @@ export default function UserLogin() {
         </div>
 
         <div className="text-center mt-4">
-          <a href="/" className="font-mono text-[0.7rem] text-fog/70 hover:text-cream transition-colors">
-            ← Kembali ke Beranda
+          <a href="/" className="inline-flex items-center gap-1.5 font-mono text-[0.7rem] text-fog/70 hover:text-cream transition-colors">
+            <ArrowLeftIcon className="w-3.5 h-3.5" /> Kembali ke Beranda
           </a>
         </div>
       </div>
@@ -172,8 +163,7 @@ export default function UserLogin() {
           >
             <h2 className="text-lg font-display font-semibold text-cream">Reset password</h2>
             <p className="text-xs text-fog mt-1 mb-4">
-              Masukkan username kamu. Jika akunmu sudah menautkan Telegram, password baru
-              dikirim ke chat @finot_finance_bot.
+              Masukkan email akunmu. Kami kirim tautan untuk membuat password baru.
             </p>
 
             {forgotMsg && (
@@ -187,9 +177,10 @@ export default function UserLogin() {
 
             <form onSubmit={submitForgot} className="space-y-3">
               <input
-                value={forgotUser}
-                onChange={(e) => setForgotUser(e.target.value)}
-                placeholder="Username"
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="kamu@email.com"
                 autoFocus
                 className="w-full px-3 py-2.5 bg-ink border border-ledger-line rounded-lg text-sm text-cream placeholder-fog/40 focus:outline-none focus:ring-2 focus:ring-moss/20 focus:border-moss"
               />
@@ -197,7 +188,7 @@ export default function UserLogin() {
                 <button
                   type="button"
                   onClick={() => setForgotOpen(false)}
-                  className="flex-1 py-2.5 border border-ledger-line text-fog text-sm font-semibold rounded-lg hover:bg-white/5"
+                  className="flex-1 py-2.5 border border-ledger-line text-fog text-sm font-semibold rounded-lg hover:bg-black/5"
                 >
                   Batal
                 </button>
@@ -206,14 +197,10 @@ export default function UserLogin() {
                   disabled={forgotBusy}
                   className="flex-1 py-2.5 bg-orange text-white text-sm font-semibold rounded-lg hover:bg-orange-dark disabled:opacity-40"
                 >
-                  {forgotBusy ? "Mengirim..." : "Kirim Password Baru"}
+                  {forgotBusy ? "Mengirim..." : "Kirim tautan reset"}
                 </button>
               </div>
             </form>
-
-            <p className="text-[0.65rem] text-fog/70 mt-4 text-center">
-              Belum bisa terima Telegram? Buka @finot_finance_bot, ketik <code className="text-cream">/resetweb</code> langsung di chat.
-            </p>
           </div>
         </div>
       )}

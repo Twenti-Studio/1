@@ -15,7 +15,7 @@ const VALUES = [
   {
     icon: UsersIcon,
     title: "Untuk Semua Orang",
-    desc: "FiNot dirancang untuk semua orang — dari mahasiswa yang baru belajar mengelola uang jajan hingga pekerja profesional yang ingin mengoptimalkan keuangan.",
+    desc: "FiNot dirancang untuk semua orang, dari mahasiswa yang baru belajar mengelola uang jajan hingga pekerja profesional yang ingin mengoptimalkan keuangan.",
   },
   {
     icon: HeartIcon,
@@ -63,7 +63,7 @@ export default function About() {
             <LightBulbIcon className="w-5 h-5 text-white/60" /> Misi Kami
           </h2>
           <p className="text-white/60 leading-relaxed">
-            Sebagian besar orang Indonesia tahu bahwa mencatat keuangan itu penting — tapi kebanyakan berhenti
+            Sebagian besar orang Indonesia tahu bahwa mencatat keuangan itu penting, tapi kebanyakan berhenti
             dalam minggu pertama karena prosesnya membosankan. Buka aplikasi, isi form, pilih kategori,
             masukkan nominal... setiap hari. Tidak heran banyak yang menyerah.
           </p>
@@ -71,11 +71,11 @@ export default function About() {
             FiNot mengubah pendekatan ini secara radikal. Alih-alih memaksa pengguna beradaptasi dengan
             aplikasi, kami membawa pencatatan keuangan ke tempat yang sudah pengguna pakai setiap hari:
             <span className="text-white font-medium"> chat</span>. Cukup ketik seperti biasa, kirim foto
-            struk, atau kirim voice note — dan AI kami mengurus sisanya.
+            struk, atau kirim voice note, dan AI kami mengurus sisanya.
           </p>
           <p className="text-white/60 leading-relaxed">
             Misi kami adalah membuat <span className="text-white font-medium">setiap orang Indonesia</span> bisa
-            mengelola keuangannya dengan mudah — tanpa perlu jadi ahli keuangan, tanpa aplikasi tambahan,
+            mengelola keuangannya dengan mudah, tanpa perlu jadi ahli keuangan, tanpa aplikasi tambahan,
             dan tanpa effort ekstra.
           </p>
         </div>
@@ -134,13 +134,13 @@ export default function About() {
           </h2>
           <p className="text-white/50 text-sm leading-relaxed">
             Twenti Studio adalah studio pengembangan software berbasis di Indonesia yang berfokus pada
-            produk AI dan otomasi. FiNot adalah flagship produk kami — diciptakan dengan passion untuk
+            produk AI dan otomasi. FiNot adalah flagship produk kami, diciptakan dengan passion untuk
             membantu setiap orang mengelola keuangan dengan lebih cerdas.
           </p>
           <div className="flex justify-center gap-3 pt-2">
             <a
               href="/register"
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-orange to-orange-dark text-white text-sm font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-transform"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-orange hover:bg-orange-dark text-white text-sm font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition-all"
             >
               Coba FiNot <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
             </a>

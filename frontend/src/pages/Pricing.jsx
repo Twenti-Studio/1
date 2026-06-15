@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, CheckIcon, QrCodeIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, MinusIcon, QrCodeIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import Logo from "../components/Logo";
@@ -24,6 +24,13 @@ function Eyebrow({ children }) {
       {children}
     </span>
   );
+}
+
+/* Renders a comparison-table cell: ✓ → check, — → dash, else the raw value. */
+function Mark({ value }) {
+  if (value === "✓") return <CheckIcon className="w-4 h-4 text-credit inline-block" aria-label="Termasuk" />;
+  if (value === "—") return <MinusIcon className="w-4 h-4 text-fog/40 inline-block" aria-label="Tidak termasuk" />;
+  return <span className="font-mono tnum">{value}</span>;
 }
 
 /* ─── Plan Data ───────────────────────────────────────── */
@@ -58,7 +65,7 @@ const PLANS = [
     name: "Pro",
     price: 19000,
     period: "/bulan",
-    tagline: "30 kredit/minggu — lebih murah dari es teh manis",
+    tagline: "30 kredit/minggu, lebih murah dari es teh manis",
     accent: "orange",
     popular: true,
     features: [
@@ -80,7 +87,7 @@ const PLANS = [
     name: "Elite",
     price: 49000,
     period: "/bulan",
-    tagline: "100 kredit/minggu — analisis komprehensif tanpa batas",
+    tagline: "100 kredit/minggu, analisis komprehensif tanpa batas",
     accent: "cream",
     popular: false,
     features: [
@@ -335,7 +342,7 @@ function PaymentModal({ plan, onClose }) {
             </button>
 
             <p className="text-[0.7rem] text-fog/70 text-center">
-              Pembayaran diproses melalui QRIS — mendukung semua e-wallet & mobile banking.
+              Pembayaran diproses melalui QRIS, mendukung semua e-wallet & mobile banking.
             </p>
           </div>
         )}
@@ -349,7 +356,7 @@ function PaymentModal({ plan, onClose }) {
               <>
                 <p className="text-sm text-fog">
                   Klik tombol di bawah untuk membuka halaman pembayaran QRIS. Setelah membayar,
-                  kembali ke halaman ini — status akan terupdate otomatis.
+                  kembali ke halaman ini, status akan terupdate otomatis.
                 </p>
                 <a
                   href={qrUrl}
@@ -427,7 +434,7 @@ function PaymentModal({ plan, onClose }) {
               }}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange text-white font-semibold shadow-lg shadow-black/30 hover:bg-orange-dark hover:-translate-y-0.5 transition-all"
             >
-              Mulai chat sekarang →
+              Mulai chat sekarang <ArrowRightIcon className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -607,11 +614,11 @@ export default function Pricing() {
                 ["Payday Planning (3 cr)", "—", "—", "✓"],
                 ["Priority support", "—", "—", "✓"],
               ].map(([feat, free, pro, elite], i) => (
-                <tr key={i} className="border-b border-ledger-line/60 last:border-0 hover:bg-ink-soft/60">
+                <tr key={i} className="border-b border-ledger-line/60 last:border-0 hover:bg-ink-2/40">
                   <td className="py-2.5 px-4 text-cream/80">{feat}</td>
-                  <td className="py-2.5 px-4 text-center font-mono tnum text-fog">{free}</td>
-                  <td className="py-2.5 px-4 text-center font-mono tnum text-cream font-medium">{pro}</td>
-                  <td className="py-2.5 px-4 text-center font-mono tnum text-cream/80">{elite}</td>
+                  <td className="py-2.5 px-4 text-center text-fog"><Mark value={free} /></td>
+                  <td className="py-2.5 px-4 text-center text-cream font-medium"><Mark value={pro} /></td>
+                  <td className="py-2.5 px-4 text-center text-cream/80"><Mark value={elite} /></td>
                 </tr>
               ))}
             </tbody>
@@ -648,8 +655,8 @@ export default function Pricing() {
           ))}
         </div>
         <div className="text-center mt-8">
-          <Link to="/faq" className="font-mono text-sm text-fog hover:text-cream transition-colors">
-            Lihat semua FAQ →
+          <Link to="/faq" className="inline-flex items-center gap-1.5 font-mono text-sm text-fog hover:text-cream transition-colors">
+            Lihat semua FAQ <ArrowRightIcon className="w-4 h-4" />
           </Link>
         </div>
       </section>

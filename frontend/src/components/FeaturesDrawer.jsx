@@ -385,7 +385,7 @@ function CashflowChart({ data }) {
                         contentStyle={{ background: "#0f1c33", border: "1px solid #1f2a40", borderRadius: 8, fontSize: 12 }}
                         formatter={(v) => rp(v)}
                     />
-                    <Line type="monotone" dataKey="income" stroke="#34D399" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="income" stroke="#5DA9F6" strokeWidth={2} dot={false} />
                     <Line type="monotone" dataKey="expense" stroke="#F5841F" strokeWidth={2} dot={false} />
                 </LineChart>
             </ResponsiveContainer>
@@ -877,11 +877,95 @@ function NotificationsPanel() {
             payment_reminder: true,
         };
     });
+    const [pushState, setPushState] = useState("checking");
+    const [pushMessage, setPushMessage] = useState("");
+
+    useEffect(() => {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+            setPushState("unsupported");
+            return;
+        }
+        navigator.serviceWorker.ready
+            .then((registration) => registration.pushManager.getSubscription())
+            .then((subscription) => setPushState(subscription ? "enabled" : "disabled"))
+            .catch(() => setPushState("disabled"));
+    }, []);
+
+    function urlBase64ToUint8Array(value) {
+        const padding = "=".repeat((4 - (value.length % 4)) % 4);
+        const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const raw = window.atob(base64);
+        return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)));
+    }
+
+    async function enablePush() {
+        setPushMessage("");
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission !== "granted") throw new Error("Izin notifikasi belum diberikan.");
+
+            const keyResponse = await fetch("/api/push/public-key");
+            const keyData = await keyResponse.json();
+            if (!keyResponse.ok || !keyData.enabled) {
+                throw new Error("Web Push belum dikonfigurasi di server.");
+            }
+
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(keyData.public_key),
+                });
+            }
+
+            const response = await fetch("/api/push/subscribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...subscription.toJSON(), prefs }),
+            });
+            if (!response.ok) throw new Error("Gagal menyimpan perangkat untuk notifikasi.");
+            setPushState("enabled");
+            setPushMessage("Notifikasi FiNot aktif di perangkat ini.");
+        } catch (error) {
+            setPushState("disabled");
+            setPushMessage(error.message || "Gagal mengaktifkan notifikasi.");
+        }
+    }
+
+    async function disablePush() {
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                await fetch("/api/push/unsubscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ endpoint: subscription.endpoint }),
+                });
+                await subscription.unsubscribe();
+            }
+            setPushState("disabled");
+            setPushMessage("Notifikasi dinonaktifkan di perangkat ini.");
+        } catch {
+            setPushMessage("Gagal menonaktifkan notifikasi.");
+        }
+    }
 
     function toggle(key) {
         const next = { ...prefs, [key]: !prefs[key] };
         setPrefs(next);
         try { localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+        if (pushState === "enabled") {
+            navigator.serviceWorker.ready
+                .then((registration) => registration.pushManager.getSubscription())
+                .then((subscription) => subscription && fetch("/api/push/subscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ...subscription.toJSON(), prefs: next }),
+                }))
+                .catch(() => {});
+        }
     }
 
     const items = [
@@ -893,6 +977,24 @@ function NotificationsPanel() {
 
     return (
         <div className="bg-card border border-border rounded-2xl p-2 divide-y divide-border">
+            <div className="px-3 py-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">Notifikasi Perangkat</p>
+                    <p className="text-[0.65rem] text-white/40">
+                        {pushState === "enabled" ? "Aktif untuk browser/PWA ini" : "Terima pengingat saat FiNot ditutup"}
+                    </p>
+                </div>
+                {pushState !== "unsupported" && (
+                    <button
+                        type="button"
+                        onClick={pushState === "enabled" ? disablePush : enablePush}
+                        className={`px-3 py-2 rounded-lg text-xs font-semibold ${pushState === "enabled" ? "bg-white/10 text-white/70" : "bg-orange text-white"}`}
+                    >
+                        {pushState === "enabled" ? "Nonaktifkan" : "Aktifkan"}
+                    </button>
+                )}
+            </div>
+            {pushMessage && <p className="px-3 py-2 text-[0.68rem] text-sky-300">{pushMessage}</p>}
             {items.map((it) => (
                 <div key={it.key} className="flex items-center gap-3 px-3 py-3">
                     <div className="flex-1 min-w-0">
@@ -903,7 +1005,8 @@ function NotificationsPanel() {
                 </div>
             ))}
             <p className="text-[0.65rem] text-white/40 px-3 py-2">
-                Preferensi disimpan di device ini. Notifikasi dikirim via Telegram.
+                Preferensi tersimpan untuk perangkat ini. Push notification memerlukan HTTPS
+                dan pada iPhone bekerja setelah FiNot ditambahkan ke Home Screen.
             </p>
         </div>
     );

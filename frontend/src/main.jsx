@@ -7,7 +7,7 @@ import { UserAuthProvider } from "./context/UserAuthContext";
 import "./index.css";
 
 // Register service worker for PWA install on /chat
-if ("serviceWorker" in navigator && window.location.protocol === "https:") {
+if ("serviceWorker" in navigator && window.isSecureContext) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => { /* ignore */ });
   });

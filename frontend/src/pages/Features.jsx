@@ -1,14 +1,15 @@
+import { ArrowRightIcon } from "@heroicons/react/24/solid";
 import { Link, useNavigate } from "react-router-dom";
 
 const FEATURES = [
   {
     title: "Input fleksibel: chat, foto, voice",
-    desc: "Chat biasa, foto struk, atau voice note — pilih cara yang paling nyaman. FiNot transkripsi, baca, lalu kategorikan otomatis. Tanpa form rumit.",
+    desc: "Chat biasa, foto struk, atau voice note, pilih cara yang paling nyaman. FiNot transkripsi, baca, lalu kategorikan otomatis. Tanpa form rumit.",
     section: "input",
   },
   {
     title: "Keamanan berlapis",
-    desc: "Kategori otomatis untuk jutaan merchant (Netflix, Gojek, Indomaret). Data terenkripsi end-to-end — kami tidak pernah membaca atau membagikan datamu.",
+    desc: "Kategori otomatis untuk jutaan merchant (Netflix, Gojek, Indomaret). Data terenkripsi end-to-end, kami tidak pernah membaca atau membagikan datamu.",
     section: "input",
   },
   {
@@ -38,7 +39,7 @@ const FEATURES = [
   },
   {
     title: "Expense prediction & payday plan",
-    desc: "Proyeksi bulan ini vs pola sebelumnya. Alokasi gaji otomatis: berapa untuk kebutuhan, tabungan, dan keinginan — dari pola riilmu.",
+    desc: "Proyeksi bulan ini vs pola sebelumnya. Alokasi gaji otomatis: berapa untuk kebutuhan, tabungan, dan keinginan, dari pola riilmu.",
     section: "pro",
   },
   {
@@ -48,12 +49,12 @@ const FEATURES = [
   },
   {
     title: "Forecast 3 bulan & strategi",
-    desc: "Proyeksi keuangan 3 bulan ke depan: income, expenses, balance, risiko, dan saran — untuk planning jangka panjang yang realistis.",
+    desc: "Proyeksi keuangan 3 bulan ke depan: income, expenses, balance, risiko, dan saran, untuk planning jangka panjang yang realistis.",
     section: "elite",
   },
   {
     title: "Weekly strategy & chat AI",
-    desc: "Strategi pengeluaran mingguan yang dipersonalisasi. Plus tanya apa saja soal keuanganmu — AI jawab berdasarkan data transaksimu.",
+    desc: "Strategi pengeluaran mingguan yang dipersonalisasi. Plus tanya apa saja soal keuanganmu, AI jawab berdasarkan data transaksimu.",
     section: "elite",
   },
   {
@@ -101,7 +102,7 @@ export default function Features() {
           untuk <span className="text-credit">mengelola uang.</span>
         </h1>
         <p className="text-fog max-w-xl mx-auto leading-relaxed">
-          Dari pencatatan otomatis hingga prediksi berbasis AI — disusun seperti buku besar,
+          Dari pencatatan otomatis hingga prediksi berbasis AI, disusun seperti buku besar,
           dikelompokkan per paket. Klik fitur untuk lihat paketnya.
         </p>
       </section>
@@ -128,9 +129,7 @@ export default function Features() {
                   >
                     <h3 className="font-display text-base font-semibold text-cream mb-2 flex items-start justify-between gap-2">
                       {f.title}
-                      <span className="font-mono text-fog/50 group-hover:text-credit transition-colors shrink-0">
-                        →
-                      </span>
+                      <ArrowRightIcon className="w-4 h-4 text-fog/50 group-hover:text-credit transition-colors shrink-0 mt-0.5" />
                     </h3>
                     <p className="text-sm text-fog leading-relaxed">{f.desc}</p>
                   </button>
@@ -160,7 +159,7 @@ export default function Features() {
               to="/pricing"
               className="inline-flex items-center gap-1.5 px-5 py-3.5 text-fog hover:text-cream font-medium transition-colors"
             >
-              Bandingkan paket →
+              Bandingkan paket <ArrowRightIcon className="w-4 h-4" />
             </Link>
           </div>
         </div>

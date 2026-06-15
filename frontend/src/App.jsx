@@ -19,8 +19,10 @@ import SimulationPage from "./pages/dashboard/SimulationPage";
 import SubscriptionPage from "./pages/dashboard/SubscriptionPage";
 import TransactionPage from "./pages/dashboard/TransactionPage";
 import Register from "./pages/dashboard/Register";
+import ResetPassword from "./pages/dashboard/ResetPassword";
 import UserDashboard from "./pages/dashboard/UserDashboard";
 import UserLogin from "./pages/dashboard/UserLogin";
+import VerifyEmail from "./pages/dashboard/VerifyEmail";
 import Faq from "./pages/Faq";
 import Features from "./pages/Features";
 import Home from "./pages/Home";
@@ -44,6 +46,9 @@ export default function App() {
       {/* User Login & Registration */}
       <Route path="login" element={<UserLogin />} />
       <Route path="register" element={<Register />} />
+      {/* Magic-link landing routes */}
+      <Route path="verify" element={<VerifyEmail />} />
+      <Route path="reset-password" element={<ResetPassword />} />
 
       {/* FiNot Chat App — standalone, full-screen, PWA */}
       <Route path="chat" element={<ChatLayout />}>

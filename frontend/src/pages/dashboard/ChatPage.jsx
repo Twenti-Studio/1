@@ -503,7 +503,7 @@ function ChatSidebar({ open, onClose, sessions, selectedDate, onSelect, onNewCha
                 </div>
 
                 <p className="px-4 py-3 text-[0.6rem] text-white/30 border-t border-border">
-                    Tiap tanggal jadi satu room chat — tersinkron otomatis dengan Telegram.
+                    Tiap tanggal jadi satu room chat, tersinkron otomatis dengan Telegram.
                 </p>
             </aside>
         </>

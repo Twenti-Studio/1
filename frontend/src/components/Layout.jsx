@@ -83,7 +83,7 @@ export default function Layout() {
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label="Buka menu"
-              className="md:hidden text-fog hover:text-cream p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+              className="md:hidden text-fog hover:text-cream p-1.5 rounded-lg hover:bg-black/5 transition-colors"
             >
               {mobileOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
             </button>
@@ -107,8 +107,8 @@ export default function Layout() {
                   className={({ isActive }) =>
                     `px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       isActive
-                        ? "bg-white/5 text-cream"
-                        : "text-fog hover:text-cream hover:bg-white/5"
+                        ? "bg-black/5 text-cream"
+                        : "text-fog hover:text-cream hover:bg-black/5"
                     }`
                   }
                 >

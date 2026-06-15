@@ -113,16 +113,6 @@ export default function CashflowTrend() {
         <div className="h-64 sm:h-80">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data}>
-              <defs>
-                <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#34D399" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#34D399" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FB7185" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#FB7185" stopOpacity={0} />
-                </linearGradient>
-              </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="rgba(255,255,255,0.06)"
@@ -151,9 +141,10 @@ export default function CashflowTrend() {
                 type="monotone"
                 dataKey="income"
                 name="Pemasukan"
-                stroke="#34D399"
+                stroke="#5DA9F6"
                 strokeWidth={2}
-                fill="url(#incomeGrad)"
+                fill="#5DA9F6"
+                fillOpacity={0.12}
               />
               <Area
                 type="monotone"
@@ -161,7 +152,8 @@ export default function CashflowTrend() {
                 name="Pengeluaran"
                 stroke="#FB7185"
                 strokeWidth={2}
-                fill="url(#expenseGrad)"
+                fill="#FB7185"
+                fillOpacity={0.12}
               />
             </AreaChart>
           </ResponsiveContainer>

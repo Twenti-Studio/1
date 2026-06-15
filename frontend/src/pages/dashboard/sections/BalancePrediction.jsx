@@ -57,7 +57,7 @@ export default function BalancePrediction({ hasAccess = false }) {
           {hasAccess ? (
             <button
               onClick={fetchPrediction}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-sky-500 to-sky-600 text-white text-sm font-semibold rounded-xl hover:-translate-y-0.5 hover:shadow-lg hover:shadow-sky-500/20 transition-all duration-200"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-xl transition-colors"
             >
               <SparklesIcon className="w-4 h-4" /> Analisis Saldo AI
             </button>

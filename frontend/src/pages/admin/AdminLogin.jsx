@@ -35,11 +35,11 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0c1330] to-[#0c1e3a] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#08152b] flex items-center justify-center p-4">
       <div className="bg-[#152052] border border-white/[0.08] rounded-2xl p-8 w-full max-w-sm shadow-2xl">
         <div className="text-center mb-6">
           <Logo className="h-14 w-auto mx-auto mb-3" />
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#F5841F] to-[#ffb347] bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold text-[#F5841F]">
             FiNot Admin
           </h1>
           <p className="text-sm text-white/40 mt-1">Masuk untuk mengelola FiNot</p>
@@ -77,7 +77,7 @@ export default function AdminLogin() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#F5841F] to-[#d9721a] text-white font-semibold text-sm hover:shadow-lg hover:shadow-[#F5841F]/25 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-[#F5841F] hover:bg-[#d9721a] text-white font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

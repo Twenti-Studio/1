@@ -84,7 +84,7 @@ export default function SubscriptionHistory() {
       "",
       "────────────────────────────────────",
       "Terima kasih telah berlangganan FiNot!",
-      "https://finot.twenti.studio",
+      "https://fi-not.app",
       "",
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });

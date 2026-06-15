@@ -9,7 +9,7 @@ export default function TrialBanner({ plan, trialDaysLeft }) {
   // Show trial countdown
   if (plan === "trial" && trialDaysLeft != null) {
     return (
-      <div className="relative bg-linear-to-r from-violet-600/20 to-sky-600/20 border border-violet-500/30 rounded-2xl p-4 sm:p-5">
+      <div className="relative bg-sky-500/10 border border-sky-500/30 rounded-2xl p-4 sm:p-5">
         <button
           onClick={() => setDismissed(true)}
           className="absolute top-3 right-3 text-white/30 hover:text-white/60"
@@ -17,11 +17,11 @@ export default function TrialBanner({ plan, trialDaysLeft }) {
           <XMarkIcon className="w-4 h-4" />
         </button>
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center shrink-0">
-            <GiftIcon className="w-5 h-5 text-violet-400" />
+          <div className="w-10 h-10 rounded-xl bg-sky-500/20 flex items-center justify-center shrink-0">
+            <GiftIcon className="w-5 h-5 text-sky-400" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-violet-300">
+            <h3 className="text-sm font-bold text-sky-300">
               Free Trial Aktif — {trialDaysLeft} hari tersisa
             </h3>
             <p className="text-xs text-white/50 mt-1 leading-relaxed">
@@ -37,7 +37,7 @@ export default function TrialBanner({ plan, trialDaysLeft }) {
             {/* Progress bar */}
             <div className="mt-3 h-1.5 bg-white/5 rounded-full overflow-hidden">
               <div
-                className="h-full bg-linear-to-r from-violet-500 to-sky-500 rounded-full transition-all duration-500"
+                className="h-full bg-sky-500 rounded-full transition-all duration-500"
                 style={{ width: `${Math.max(5, (trialDaysLeft / 7) * 100)}%` }}
               />
             </div>
@@ -53,7 +53,7 @@ export default function TrialBanner({ plan, trialDaysLeft }) {
   // Show upgrade prompt for free users
   if (plan === "free") {
     return (
-      <div className="relative bg-linear-to-r from-orange/10 to-amber-500/10 border border-orange/20 rounded-2xl p-4 sm:p-5">
+      <div className="relative bg-orange/10 border border-orange/20 rounded-2xl p-4 sm:p-5">
         <button
           onClick={() => setDismissed(true)}
           className="absolute top-3 right-3 text-white/30 hover:text-white/60"

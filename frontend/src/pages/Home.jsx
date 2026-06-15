@@ -1,4 +1,4 @@
-import { ArrowRightIcon } from "@heroicons/react/24/solid";
+import { ArrowRightIcon, StarIcon } from "@heroicons/react/24/solid";
 import { Link } from "react-router-dom";
 import LedgerPosting from "../components/marketing/LedgerPosting";
 
@@ -6,7 +6,7 @@ const HIGHLIGHTS = [
   {
     code: "Chat",
     title: "Chat biasa, langsung tercatat",
-    desc: "Ketik 'makan siang 35rb' seperti chat ke teman — transaksimu masuk ke buku besar dengan kategori otomatis.",
+    desc: "Ketik 'makan siang 35rb' seperti chat ke teman, transaksimu masuk ke buku besar dengan kategori otomatis.",
   },
   {
     code: "OCR",
@@ -68,7 +68,7 @@ export default function Home() {
               <span className="text-credit">segampang nge-chat.</span>
             </h1>
             <p className="text-lg text-fog max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              Ketik kayak chat biasa — <span className="text-cream">“makan siang 35rb”</span> —
+              Ketik kayak chat biasa, <span className="text-cream">“makan siang 35rb”</span>,
               FiNot langsung nyatet, ngategoriin, dan nunjukin ke mana uangmu pergi.
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
@@ -136,7 +136,7 @@ export default function Home() {
             >
               <div className="flex items-center gap-2 mb-4">
                 <span className="font-mono text-sm font-semibold text-cream tnum">{t.rating}</span>
-                <span className="text-[#e5b567] text-sm">★</span>
+                <StarIcon className="w-4 h-4 text-amber-500" />
               </div>
               <blockquote className="text-sm text-cream/85 leading-relaxed flex-1">
                 “{t.text}”
@@ -155,7 +155,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═══ CTA — closing entry ═══ */}
+      {/* ═══ CTA, closing entry ═══ */}
       <section className="max-w-6xl mx-auto px-6 py-16">
         <div className="relative bg-ink-soft border border-moss/40 rounded-3xl px-8 py-14 text-center overflow-hidden">
           <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-80 bg-moss/15 rounded-full blur-[100px] pointer-events-none" />

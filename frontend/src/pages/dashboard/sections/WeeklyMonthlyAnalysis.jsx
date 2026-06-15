@@ -94,7 +94,7 @@ export default function WeeklyMonthlyAnalysis({ features = {} }) {
           {hasAccess ? (
             <button
               onClick={fetchAnalysis}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-violet-500 to-violet-600 text-white text-sm font-semibold rounded-xl hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/20 transition-all duration-200"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold rounded-xl transition-colors"
             >
               <SparklesIcon className="w-4 h-4" />
               Analisis {tab === "weekly" ? "Minggu Ini" : "Bulan Ini"}

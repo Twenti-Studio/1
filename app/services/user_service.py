@@ -95,11 +95,13 @@ async def create_web_user(
     username: str,
     password: str,
     name: Optional[str] = None,
+    email: Optional[str] = None,
 ) -> User:
     """Create a standalone web account (no Telegram required).
 
     `username` is stored as the unique `webLogin`; `password` is hashed.
-    Starts on a 7-day trial with 35 AI credits.
+    `email` (optional) is stored unverified; the caller sends a verification
+    magic link. Starts on a 7-day trial with 35 AI credits.
     """
     from app.services.payment_service import _hash_pw
 
@@ -107,18 +109,20 @@ async def create_web_user(
     trial_end = datetime.now(timezone.utc) + timedelta(days=7)
     display_name_final = (name or "").strip() or username
 
-    user = await prisma.user.create(
-        data={
-            "id": new_id,
-            "displayName": display_name_final,
-            "webLogin": username,
-            "webPassword": _hash_pw(password),
-            "plan": "trial",
-            "trialEndsAt": trial_end,
-        },
-    )
+    data = {
+        "id": new_id,
+        "displayName": display_name_final,
+        "webLogin": username,
+        "webPassword": _hash_pw(password),
+        "plan": "trial",
+        "trialEndsAt": trial_end,
+    }
+    if email:
+        data["email"] = email
+
+    user = await prisma.user.create(data=data)
     await _create_trial_credits(prisma, new_id)
-    _logger.info(f"New web user created: id={new_id} login={username}")
+    _logger.info(f"New web user created: id={new_id} login={username} email={email or '-'}")
     return user
 
 

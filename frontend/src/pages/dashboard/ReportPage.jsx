@@ -10,7 +10,7 @@ const STATUS_LABELS = {
 const STATUS_COLORS = {
     open: "#f59e0b",
     in_progress: "#3b82f6",
-    resolved: "#22c55e",
+    resolved: "#327dc4",
     closed: "#6b7280",
 };
 const CATEGORIES = [
@@ -224,7 +224,7 @@ export default function ReportPage() {
                     </p>
                 )}
                 {success && (
-                    <p style={{ color: "#22c55e", fontSize: "0.85rem", marginBottom: 12 }}>
+                    <p style={{ color: "#5da9f6", fontSize: "0.85rem", marginBottom: 12 }}>
                         ✅ {success}
                     </p>
                 )}
@@ -237,7 +237,7 @@ export default function ReportPage() {
                         borderRadius: 10,
                         border: "none",
                         background:
-                            "linear-gradient(135deg, #f97316, #ea580c)",
+                            "#f5841f",
                         color: "#fff",
                         fontWeight: 600,
                         fontSize: "0.9rem",
@@ -335,14 +335,14 @@ export default function ReportPage() {
                                         padding: 12,
                                         borderRadius: 8,
                                         background: "rgba(34,197,94,0.08)",
-                                        borderLeft: "3px solid #22c55e",
+                                        borderLeft: "3px solid #327dc4",
                                     }}
                                 >
                                     <div
                                         style={{
                                             fontSize: "0.75rem",
                                             fontWeight: 600,
-                                            color: "#22c55e",
+                                            color: "#5da9f6",
                                             marginBottom: 4,
                                         }}
                                     >

@@ -34,8 +34,40 @@ def _hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
+import re as _re_email
+
+EMAIL_RE = _re_email.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _issue_session(resp: JSONResponse, user_id: int) -> None:
+    """Create an in-memory session and attach the cookie to the response."""
+    session_id = secrets.token_hex(24)
+    USER_SESSIONS[session_id] = int(user_id)
+    resp.set_cookie(
+        key="user_session",
+        value=session_id,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7,  # 7 days
+    )
+
+
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _as_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Normalize Prisma/PostgreSQL timestamps before comparing them.
+
+    PostgreSQL `TIMESTAMP` values are returned as naive datetimes by Prisma,
+    while application clocks are timezone-aware. Comparing both directly
+    raises TypeError and previously turned successful trial logins into HTTP 500.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _fmt_dt(dt: Optional[datetime]) -> Optional[str]:
@@ -76,9 +108,18 @@ class UserLoginRequest(BaseModel):
 @router.post("/login")
 async def user_login(req: UserLoginRequest):
     """Login with web_login + web_password."""
-    user = await prisma.user.find_first(
-        where={"webLogin": req.username}
-    )
+    username = (req.username or "").strip().lower()
+    try:
+        user = await prisma.user.find_first(where={"webLogin": username})
+    except Exception as exc:
+        _logger.error("Login database query failed", exc_info=True)
+        return JSONResponse(
+            {
+                "success": False,
+                "error": "Database akun belum siap. Jalankan migrasi lalu coba lagi.",
+            },
+            status_code=503,
+        )
     if not user or not user.webPassword:
         return JSONResponse(
             {"success": False, "error": "Username atau password salah"},
@@ -91,8 +132,17 @@ async def user_login(req: UserLoginRequest):
             status_code=401,
         )
 
-    session_id = secrets.token_hex(24)
-    USER_SESSIONS[session_id] = int(user.id)
+    # Email verification gate: accounts created with an email must verify it first.
+    # Grandfathered accounts (no email) are allowed through.
+    if user.email and not user.emailVerifiedAt:
+        return JSONResponse(
+            {
+                "success": False,
+                "error": "Email belum diverifikasi. Cek inbox untuk tautan verifikasi.",
+                "needs_verification": True,
+            },
+            status_code=403,
+        )
 
     # Auto-activate 7-day trial for first-time free users
     plan = user.plan
@@ -106,9 +156,9 @@ async def user_login(req: UserLoginRequest):
         plan = "trial"
         _logger.info(f"Trial activated for user {user.id}, ends at {trial_ends_at}")
     elif user.plan == "trial" and user.trialEndsAt:
-        trial_ends_at = user.trialEndsAt
+        trial_ends_at = _as_utc(user.trialEndsAt)
         # Check if expired
-        if trial_ends_at <= _utcnow():
+        if trial_ends_at and trial_ends_at <= _utcnow():
             await prisma.user.update(
                 where={"id": user.id},
                 data={"plan": "free"},
@@ -116,6 +166,7 @@ async def user_login(req: UserLoginRequest):
             plan = "free"
             trial_ends_at = None
 
+    from app.services.user_service import is_onboarding_complete
     resp = JSONResponse({
         "success": True,
         "user": {
@@ -124,35 +175,41 @@ async def user_login(req: UserLoginRequest):
             "display_name": user.displayName,
             "plan": plan,
             "trial_ends_at": trial_ends_at.isoformat() if trial_ends_at else None,
+            "needs_onboarding": not is_onboarding_complete(user),
         },
     })
-    resp.set_cookie(
-        key="user_session",
-        value=session_id,
-        httponly=True,
-        samesite="lax",
-        max_age=60 * 60 * 24 * 7,  # 7 days
-    )
+    _issue_session(resp, int(user.id))
     return resp
 
 
 class UserRegisterRequest(BaseModel):
     username: str
     password: str
+    email: str
     name: Optional[str] = None
 
 
 @router.post("/register")
 async def user_register(req: UserRegisterRequest):
-    """Create a standalone web account (no Telegram required) and sign in."""
+    """Step 1 of registration: create an unverified account and email a magic link.
+
+    The user is NOT signed in yet — they must click the verification link, then
+    complete the onboarding (data diri) form before the app unlocks.
+    """
     import re as _re
 
     username = (req.username or "").strip().lower()
     password = req.password or ""
+    email = (req.email or "").strip().lower()
 
     if not _re.match(r"^[a-z0-9._-]{3,32}$", username):
         return JSONResponse(
             {"success": False, "error": "Username 3-32 karakter: huruf kecil, angka, . _ -"},
+            status_code=400,
+        )
+    if not EMAIL_RE.match(email):
+        return JSONResponse(
+            {"success": False, "error": "Format email tidak valid"},
             status_code=400,
         )
     if len(password) < 6:
@@ -161,17 +218,24 @@ async def user_register(req: UserRegisterRequest):
             status_code=400,
         )
 
-    existing = await prisma.user.find_first(where={"webLogin": username})
-    if existing:
+    if await prisma.user.find_first(where={"webLogin": username}):
         return JSONResponse(
             {"success": False, "error": "Username sudah dipakai. Pilih yang lain."},
             status_code=409,
         )
+    if await prisma.user.find_first(where={"email": email}):
+        return JSONResponse(
+            {"success": False, "error": "Email sudah terdaftar. Coba masuk atau reset password."},
+            status_code=409,
+        )
 
     from app.services.user_service import create_web_user
+    from app.services.auth_token_service import create_auth_token, PURPOSE_VERIFY_EMAIL
+    from app.services.email_service import send_verification_email
+    from app.config import APP_BASE_URL, EMAIL_ENABLED
 
     try:
-        user = await create_web_user(prisma, username, password, name=req.name)
+        user = await create_web_user(prisma, username, password, name=req.name, email=email)
     except Exception as e:
         _logger.error(f"register failed: {e}", exc_info=True)
         return JSONResponse(
@@ -179,8 +243,47 @@ async def user_register(req: UserRegisterRequest):
             status_code=500,
         )
 
-    session_id = secrets.token_hex(24)
-    USER_SESSIONS[session_id] = int(user.id)
+    raw = await create_auth_token(prisma, int(user.id), PURPOSE_VERIFY_EMAIL)
+    link = f"{APP_BASE_URL}/verify?token={raw}"
+    sent = await send_verification_email(email, link)
+
+    if not EMAIL_ENABLED:
+        _logger.warning("EMAIL not configured — verification link for %s: %s", email, link)
+
+    return JSONResponse({
+        "success": True,
+        "needs_verification": True,
+        "email": email,
+        "email_sent": sent,
+        "message": "Akun dibuat. Cek email kamu untuk tautan verifikasi.",
+    })
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+@router.post("/verify-email")
+async def verify_email(req: VerifyEmailRequest):
+    """Step 2: consume the verification magic link, sign the user in."""
+    from app.services.auth_token_service import consume_auth_token, PURPOSE_VERIFY_EMAIL
+    from app.services.user_service import is_onboarding_complete
+
+    user_id = await consume_auth_token(prisma, req.token, PURPOSE_VERIFY_EMAIL)
+    if not user_id:
+        return JSONResponse(
+            {"success": False, "error": "Tautan tidak valid atau sudah kedaluwarsa. Minta tautan baru."},
+            status_code=400,
+        )
+
+    user = await prisma.user.find_unique(where={"id": user_id})
+    if not user:
+        return JSONResponse({"success": False, "error": "Akun tidak ditemukan."}, status_code=404)
+
+    if not user.emailVerifiedAt:
+        user = await prisma.user.update(
+            where={"id": user_id}, data={"emailVerifiedAt": _utcnow()}
+        )
 
     resp = JSONResponse({
         "success": True,
@@ -190,18 +293,56 @@ async def user_register(req: UserRegisterRequest):
             "display_name": user.displayName,
             "plan": user.plan,
             "trial_ends_at": user.trialEndsAt.isoformat() if user.trialEndsAt else None,
-            "telegram_linked": False,
-            "telegram_id": None,
+            "needs_onboarding": not is_onboarding_complete(user),
         },
     })
-    resp.set_cookie(
-        key="user_session",
-        value=session_id,
-        httponly=True,
-        samesite="lax",
-        max_age=60 * 60 * 24 * 7,
-    )
+    _issue_session(resp, int(user.id))
     return resp
+
+
+class OnboardingRequest(BaseModel):
+    full_name: str
+    occupation: str
+    fixed_income: int
+    monthly_dependents: int
+
+
+@router.post("/onboarding")
+async def submit_onboarding(req: OnboardingRequest, user_id: int = Depends(require_user)):
+    """Step 3: save the required 'data diri' profile and unlock the app."""
+    from app.services.user_service import update_onboarding_profile, is_onboarding_complete
+
+    full_name = (req.full_name or "").strip()
+    occupation = (req.occupation or "").strip()
+    if not full_name or not occupation:
+        return JSONResponse({"success": False, "error": "Nama lengkap dan pekerjaan wajib diisi"}, status_code=400)
+    if req.fixed_income < 0 or req.monthly_dependents < 0:
+        return JSONResponse({"success": False, "error": "Nilai tidak boleh negatif"}, status_code=400)
+
+    user = await update_onboarding_profile(
+        prisma,
+        user_id,
+        {
+            "fullName": full_name,
+            "occupation": occupation,
+            "fixedIncome": int(req.fixed_income),
+            "monthlyDependents": int(req.monthly_dependents),
+        },
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "success": True,
+        "user": {
+            "id": str(user.id),
+            "username": user.webLogin,
+            "display_name": user.displayName,
+            "plan": user.plan,
+            "trial_ends_at": user.trialEndsAt.isoformat() if user.trialEndsAt else None,
+            "needs_onboarding": not is_onboarding_complete(user),
+        },
+    }
 
 
 @router.get("/me")
@@ -219,12 +360,14 @@ async def user_me(request: Request):
     plan = user.plan
     trial_ends_at = None
     if user.plan == "trial":
-        if user.trialEndsAt and user.trialEndsAt > _utcnow():
-            trial_ends_at = user.trialEndsAt
+        normalized_trial_end = _as_utc(user.trialEndsAt)
+        if normalized_trial_end and normalized_trial_end > _utcnow():
+            trial_ends_at = normalized_trial_end
         else:
             await prisma.user.update(where={"id": user.id}, data={"plan": "free"})
             plan = "free"
 
+    from app.services.user_service import is_onboarding_complete
     return {
         "authenticated": True,
         "user": {
@@ -233,6 +376,9 @@ async def user_me(request: Request):
             "display_name": user.displayName,
             "plan": plan,
             "trial_ends_at": trial_ends_at.isoformat() if trial_ends_at else None,
+            "email": user.email,
+            "email_verified": user.emailVerifiedAt is not None,
+            "needs_onboarding": not is_onboarding_complete(user),
             "telegram_linked": user.telegramId is not None,
             "telegram_id": str(user.telegramId) if user.telegramId else None,
         },
@@ -240,71 +386,84 @@ async def user_me(request: Request):
 
 
 class ForgotPasswordRequest(BaseModel):
-    username: str
+    email: str
 
 
 @router.post("/forgot-password")
 async def forgot_password(req: ForgotPasswordRequest):
-    """
-    Send a new auto-generated password to the user via Telegram.
-    Public endpoint — does not require login.
-    Always returns success-ish to prevent username enumeration.
-    """
-    username = (req.username or "").strip().lower()
-    if not username:
-        return JSONResponse(
-            {"success": False, "error": "Username wajib diisi"}, status_code=400,
-        )
+    """Email a password-reset magic link.
 
-    user = await prisma.user.find_first(where={"webLogin": username})
+    Public endpoint. Always returns a generic success to prevent email
+    enumeration.
+    """
+    email = (req.email or "").strip().lower()
+    generic = {
+        "success": True,
+        "message": "Kalau email ini terdaftar, tautan atur ulang password sudah dikirim. Cek inbox kamu.",
+    }
+    if not EMAIL_RE.match(email):
+        return JSONResponse({"success": False, "error": "Format email tidak valid"}, status_code=400)
+
+    user = await prisma.user.find_first(where={"email": email})
     if not user:
-        # Don't reveal whether user exists
-        return {
-            "success": True,
-            "message": "Kalau username ini terdaftar & Telegram-nya tertaut, password baru sudah dikirim.",
-        }
+        return generic
 
-    # Password reset is delivered via Telegram, so it only works for linked accounts.
-    if not user.telegramId:
+    from app.services.auth_token_service import create_auth_token, PURPOSE_RESET_PASSWORD
+    from app.services.email_service import send_password_reset_email
+    from app.config import APP_BASE_URL, EMAIL_ENABLED
+
+    raw = await create_auth_token(prisma, int(user.id), PURPOSE_RESET_PASSWORD)
+    link = f"{APP_BASE_URL}/reset-password?token={raw}"
+    await send_password_reset_email(email, link)
+    if not EMAIL_ENABLED:
+        _logger.warning("EMAIL not configured — reset link for %s: %s", email, link)
+    return generic
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/reset-password")
+async def reset_password(req: ResetPasswordRequest):
+    """Consume a reset magic link, set a new password, and sign the user in.
+
+    Clicking the link also proves email ownership, so the email is marked
+    verified here too.
+    """
+    from app.services.auth_token_service import consume_auth_token, PURPOSE_RESET_PASSWORD
+    from app.services.user_service import is_onboarding_complete
+
+    if len(req.new_password or "") < 6:
+        return JSONResponse({"success": False, "error": "Password minimal 6 karakter"}, status_code=400)
+
+    user_id = await consume_auth_token(prisma, req.token, PURPOSE_RESET_PASSWORD)
+    if not user_id:
         return JSONResponse(
-            {
-                "success": False,
-                "error": "Akun ini belum menautkan Telegram, jadi reset otomatis tidak tersedia. "
-                         "Hubungi support untuk reset manual.",
-            },
+            {"success": False, "error": "Tautan tidak valid atau sudah kedaluwarsa. Minta tautan baru."},
             status_code=400,
         )
 
-    from app.services.user_service import reset_web_credentials
-    from app.webhook.telegram import send_telegram_message, _dashboard_base_url
+    update_data = {"webPassword": _hash_password(req.new_password)}
+    user = await prisma.user.find_unique(where={"id": user_id})
+    if user and not user.emailVerifiedAt:
+        update_data["emailVerifiedAt"] = _utcnow()
+    user = await prisma.user.update(where={"id": user_id}, data=update_data)
 
-    result = await reset_web_credentials(prisma, int(user.id))
-    if not result:
-        return JSONResponse(
-            {"success": False, "error": "Gagal reset password. Coba lagi."},
-            status_code=500,
-        )
-
-    login, plain = result
-    dashboard = _dashboard_base_url()
-    try:
-        await send_telegram_message(
-            int(user.telegramId),
-            f"🔑 <b>Password Chat-App Direset</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"Username: <code>{login}</code>\n"
-            f"Password baru: <code>{plain}</code>\n\n"
-            f"Login di: {dashboard}/login\n\n"
-            f"⚠️ Password lama tidak berlaku lagi.\n"
-            f"Simpan password ini — tidak akan ditampilkan lagi.",
-        )
-    except Exception as e:
-        _logger.error(f"Failed to send reset password to user {user.id}: {e}")
-
-    return {
+    resp = JSONResponse({
         "success": True,
-        "message": "Password baru sudah dikirim ke Telegram-mu. Cek pesan dari @finot_finance_bot.",
-    }
+        "user": {
+            "id": str(user.id),
+            "username": user.webLogin,
+            "display_name": user.displayName,
+            "plan": user.plan,
+            "trial_ends_at": user.trialEndsAt.isoformat() if user.trialEndsAt else None,
+            "needs_onboarding": not is_onboarding_complete(user),
+        },
+    })
+    _issue_session(resp, int(user.id))
+    return resp
 
 
 @router.get("/logout")
@@ -1493,4 +1652,3 @@ async def list_reports(user_id: int = Depends(require_user)):
     except Exception as e:
         _logger.error(f"Error listing reports: {e}", exc_info=True)
         return JSONResponse({"reports": []})
-
