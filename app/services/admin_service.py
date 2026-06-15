@@ -420,9 +420,9 @@ async def get_broadcast_stats() -> Dict[str, int]:
     }
 
 
-async def send_broadcast(target: str, message: str) -> Dict[str, Any]:
+async def send_broadcast(target: str, message: str, subject: str = "Pengumuman FiNot") -> Dict[str, Any]:
     """
-    Send broadcast message to users via Telegram.
+    Send an announcement to users via BOTH Telegram (linked accounts) and email.
     target: all | premium | pro | elite | free
     """
     try:
@@ -439,36 +439,50 @@ async def send_broadcast(target: str, message: str) -> Dict[str, Any]:
 
         users = await prisma.user.find_many(where=where_clause if where_clause else {})
 
-        if not BOT_TOKEN:
-            return {"success": False, "error": "BOT_TOKEN not configured"}
+        telegram_sent = 0
+        telegram_failed = 0
 
-        sent_count = 0
-        failed_count = 0
+        # ── Telegram (only linked accounts) ──
+        if BOT_TOKEN:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                for user in users:
+                    if user.telegramId is None:
+                        continue
+                    try:
+                        resp = await client.post(
+                            f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendMessage",
+                            json={
+                                "chat_id": int(user.telegramId),
+                                "text": message,
+                                "parse_mode": "HTML",
+                            },
+                        )
+                        if resp.status_code == 200 and resp.json().get("ok"):
+                            telegram_sent += 1
+                        else:
+                            telegram_failed += 1
+                    except Exception:
+                        telegram_failed += 1
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            for user in users:
-                try:
-                    resp = await client.post(
-                        f"{TELEGRAM_API_URL}/bot{BOT_TOKEN}/sendMessage",
-                        json={
-                            "chat_id": int(user.id),
-                            "text": message,
-                            "parse_mode": "HTML",
-                        },
-                    )
-                    if resp.status_code == 200 and resp.json().get("ok"):
-                        sent_count += 1
-                    else:
-                        failed_count += 1
-                except Exception:
-                    failed_count += 1
+        # ── Email (all users with an address) ──
+        from app.services.email_service import send_announcement_bulk
 
-        _logger.info(f"Broadcast sent: target={target}, sent={sent_count}, failed={failed_count}")
+        recipients = [u.email for u in users if getattr(u, "email", None)]
+        email_sent = await send_announcement_bulk(recipients, subject, message)
+
+        _logger.info(
+            f"Broadcast: target={target}, telegram={telegram_sent}/{telegram_sent + telegram_failed}, "
+            f"email={email_sent}/{len(recipients)}"
+        )
         return {
             "success": True,
-            "sent_count": sent_count,
-            "failed_count": failed_count,
             "target": target,
+            "telegram_sent": telegram_sent,
+            "email_sent": email_sent,
+            "email_recipients": len(recipients),
+            "failed_count": telegram_failed,
+            # Backward-compatible total of successful deliveries
+            "sent_count": telegram_sent + email_sent,
         }
 
     except Exception as e:

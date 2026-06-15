@@ -137,7 +137,7 @@ export default function Layout() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Logo className="h-7 w-auto" glow />
+                <Logo className="h-8 w-auto" glow />
                 <span className="font-display font-semibold text-lg text-cream">FiNot</span>
               </div>
               <p className="font-mono text-[0.7rem] text-fog max-w-xs leading-relaxed">

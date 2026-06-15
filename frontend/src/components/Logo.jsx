@@ -1,7 +1,7 @@
 export default function Logo({ className = "h-8 w-auto", glow = false }) {
   return (
     <img
-      src="/finot-logo.png"
+      src="/finot_logo.png"
       alt="FiNot"
       className={className}
       draggable={false}

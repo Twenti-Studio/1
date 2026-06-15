@@ -27,20 +27,20 @@ const HIGHLIGHTS = [
 
 const TESTIMONIALS = [
   {
-    name: "Rina Sari",
-    role: "Freelance Designer",
+    name: "Faisal",
+    role: "Mahasiswa S1",
     text: "Dulu aku selalu lupa catat pengeluaran. Sejak pakai FiNot, tinggal chat aja sehabis bayar. Akhirnya tahu kenapa uang selalu habis di tengah bulan.",
     rating: "5,0",
   },
   {
-    name: "Budi Prasetyo",
-    role: "Mahasiswa S1",
+    name: "Kristian",
+    role: "Pekerja Swasta",
     text: "Fitur scan struk-nya keren banget. Belanja di minimarket, foto struk, semua langsung ke-record. Bisa kasih lihat laporan ke orang tua juga.",
     rating: "5,0",
   },
   {
-    name: "Dinda Ayu",
-    role: "Karyawan Swasta",
+    name: "Andi",
+    role: "Mahasiswa S1",
     text: "Ringkasan tiap Senin bikin aku sadar pola pengeluaran. Dalam 2 bulan, berhasil pangkas jajan 30% dan mulai nabung rutin.",
     rating: "5,0",
   },

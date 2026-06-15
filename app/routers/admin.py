@@ -236,6 +236,7 @@ async def api_credit_adjust(
 class BroadcastRequest(BaseModel):
     target: str
     message: str
+    subject: Optional[str] = None
 
 
 @router.post("/broadcast")
@@ -247,7 +248,8 @@ async def api_broadcast(
     if req.target not in ("all", "premium", "pro", "elite", "free"):
         return JSONResponse({"success": False, "error": "Invalid target"})
 
-    result = await send_broadcast(target=req.target, message=req.message)
+    subject = (req.subject or "").strip() or "Pengumuman FiNot"
+    result = await send_broadcast(target=req.target, message=req.message, subject=subject)
     return JSONResponse(result)
 
 
