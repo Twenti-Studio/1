@@ -20,7 +20,7 @@ export default function AdminVouchers() {
 
   const loadVouchers = async () => {
     try {
-      const res = await fetch("/admin/api/vouchers");
+      const res = await fetch("/admin/api/vouchers", { credentials: "include" });
       if (!res.ok) {
         navigate("/admin/login");
         return;
@@ -41,6 +41,7 @@ export default function AdminVouchers() {
       const res = await fetch("/admin/api/vouchers/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(form),
       });
       const data = await res.json();

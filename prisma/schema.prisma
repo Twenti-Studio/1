@@ -53,8 +53,29 @@ model User {
   chatMessages    ChatMessage[]
   pushSubscriptions PushSubscription[]
   authTokens      AuthToken[]
+  budgetSchemes   BudgetScheme[]
 
   @@map("users")
+}
+
+// User-defined financial schemes / budgets (e.g. "Nongkrong" max Rp500.000/month).
+// FiNot warns the user once spending in the linked categories crosses `threshold`%.
+model BudgetScheme {
+  id          Int       @id @default(autoincrement())
+  userId      BigInt    @map("user_id")
+  name        String                          // display name, e.g. "Nongkrong"
+  categories  String[]                        // transaction categories counted, e.g. ["nongkrong","ngopi"]
+  limit       Int                             // budget amount in IDR
+  period      String    @default("monthly")   // monthly | weekly
+  threshold   Int       @default(70)          // percent that triggers the warning
+  lastAlertAt DateTime? @map("last_alert_at") // anti-spam: last time a warning was sent
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("budget_schemes")
 }
 
 // Magic-link / one-time auth tokens (email verification & password reset)

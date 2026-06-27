@@ -36,8 +36,10 @@ _logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/api", tags=["admin"])
 
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "finot123")
+# Strip surrounding whitespace so a stray space/newline in .env doesn't
+# silently break login ("sudah sesuai env tapi tetap salah").
+ADMIN_USERNAME = (os.getenv("ADMIN_USERNAME", "admin") or "").strip()
+ADMIN_PASSWORD = (os.getenv("ADMIN_PASSWORD", "finot123") or "").strip()
 
 # In-memory sessions (restart clears them — acceptable for admin)
 SESSIONS: set = set()
@@ -70,7 +72,11 @@ class LoginRequest(BaseModel):
 
 @router.post("/login")
 async def login(req: LoginRequest):
-    if req.username == ADMIN_USERNAME and req.password == ADMIN_PASSWORD:
+    # Trim input too: mobile keyboards / copy-paste often append a trailing
+    # space or newline, which makes a correct password look wrong.
+    username_ok = secrets.compare_digest(req.username.strip(), ADMIN_USERNAME)
+    password_ok = secrets.compare_digest(req.password.strip(), ADMIN_PASSWORD)
+    if username_ok and password_ok:
         session_id = secrets.token_hex(16)
         SESSIONS.add(session_id)
         resp = JSONResponse({"success": True, "admin": ADMIN_USERNAME})

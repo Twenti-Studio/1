@@ -39,11 +39,13 @@ TRAKTEER_PAGE_URL = os.getenv("TRAKTEER_PAGE_URL", "https://trakteer.id/twenti_s
 
 # ── Email / SMTP (magic links) ─────────────
 # Used to send email-verification & password-reset magic links.
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_HOST = (os.getenv("SMTP_HOST", "smtp.gmail.com") or "").strip()
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER")                       # e.g. twentistudio@gmail.com
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")               # Gmail App Password (16 chars)
-SMTP_FROM = os.getenv("SMTP_FROM", "FiNot <twentistudio@gmail.com>")
+SMTP_USER = (os.getenv("SMTP_USER") or "").strip() or None       # e.g. twentistudio@gmail.com
+# Gmail App Password is 16 chars with NO spaces. A stray trailing space in .env
+# makes SMTP login fail silently → magic links never get sent. Strip all spaces.
+SMTP_PASSWORD = (os.getenv("SMTP_PASSWORD") or "").replace(" ", "") or None
+SMTP_FROM = (os.getenv("SMTP_FROM", "FiNot <twentistudio@gmail.com>") or "").strip()
 # Public base URL used to build magic links (no trailing slash).
 APP_BASE_URL = os.getenv("APP_BASE_URL", "https://fi-note.app").rstrip("/")
 EMAIL_ENABLED = bool(SMTP_USER and SMTP_PASSWORD)

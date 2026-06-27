@@ -72,6 +72,7 @@ async def get_chat_file(filename: str, user_id: int = Depends(require_user)):
 
 class TextMessageRequest(BaseModel):
     text: str
+    reply_to: Optional[dict] = None
 
 
 def _parse_iso(value: Optional[str]) -> Optional[datetime]:
@@ -137,7 +138,7 @@ async def post_text(
         raise HTTPException(status_code=400, detail="Text must not be empty")
 
     try:
-        result = await handle_text_message(user_id, text)
+        result = await handle_text_message(user_id, text, reply_to=body.reply_to)
     except Exception as e:
         _logger.error(f"/api/chat/text failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to process message")

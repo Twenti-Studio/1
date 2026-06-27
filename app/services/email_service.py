@@ -10,7 +10,7 @@ import asyncio
 import logging
 import smtplib
 from email.message import EmailMessage
-from email.utils import formataddr
+from email.utils import formataddr, formatdate, make_msgid, parseaddr
 
 from app import config
 
@@ -20,17 +20,42 @@ BRAND_NAVY = "#123a73"
 BRAND_ORANGE = "#F5841F"
 
 
+def _sender_domain() -> str:
+    """Domain of the From/login address — used for a clean Message-ID."""
+    addr = parseaddr(config.SMTP_FROM or "")[1] or (config.SMTP_USER or "")
+    return addr.split("@")[-1] if "@" in addr else "finot.app"
+
+
+def _apply_deliverability_headers(msg: EmailMessage) -> None:
+    """Set headers that legitimate mail has and spam filters look for.
+
+    Missing Date/Message-ID and a mismatched envelope are common reasons a
+    message lands in spam. SPF/DKIM/DMARC still need to be configured at the
+    DNS level for the sending domain — these headers complement that.
+    """
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain=_sender_domain())
+    reply_to = parseaddr(config.SMTP_FROM or "")[1] or config.SMTP_USER
+    if reply_to:
+        msg["Reply-To"] = reply_to
+    # Mail clients use this to tag the message as a transactional auto-send.
+    msg["Auto-Submitted"] = "auto-generated"
+
+
 def _send_sync(to_email: str, subject: str, html: str, text: str) -> None:
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = config.SMTP_FROM or config.SMTP_USER
     msg["To"] = to_email
+    _apply_deliverability_headers(msg)
+    # text/plain first, then text/html — required order for multipart/alternative.
     msg.set_content(text)
     msg.add_alternative(html, subtype="html")
 
     with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=20) as server:
         server.ehlo()
         server.starttls()
+        server.ehlo()
         server.login(config.SMTP_USER, config.SMTP_PASSWORD)
         server.send_message(msg)
 
@@ -120,12 +145,18 @@ def _send_bulk_sync(recipients: list[str], subject: str, html: str, text: str) -
         server.ehlo()
         server.starttls()
         server.login(config.SMTP_USER, config.SMTP_PASSWORD)
+        unsub = parseaddr(config.SMTP_FROM or "")[1] or config.SMTP_USER
         for to_email in recipients:
             try:
                 msg = EmailMessage()
                 msg["Subject"] = subject
                 msg["From"] = config.SMTP_FROM or config.SMTP_USER
                 msg["To"] = to_email
+                _apply_deliverability_headers(msg)
+                # Bulk/announcement mail must offer an unsubscribe path or it
+                # gets penalised by Gmail/Outlook bulk-sender policies.
+                if unsub:
+                    msg["List-Unsubscribe"] = f"<mailto:{unsub}?subject=unsubscribe>"
                 msg.set_content(text)
                 msg.add_alternative(html, subtype="html")
                 server.send_message(msg)

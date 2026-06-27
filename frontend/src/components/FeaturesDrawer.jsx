@@ -1,16 +1,25 @@
 import {
     ArrowLeftIcon,
+    ArrowPathRoundedSquareIcon,
     ArrowRightOnRectangleIcon,
+    ArrowTrendingDownIcon,
+    ArrowTrendingUpIcon,
     BanknotesIcon,
     BellIcon,
     ChatBubbleLeftRightIcon,
     ChartBarIcon,
+    ChartPieIcon,
     ClipboardDocumentListIcon,
     Cog6ToothIcon,
     CreditCardIcon,
+    CubeIcon,
+    HeartIcon,
+    LightBulbIcon,
     LinkIcon,
     LockClosedIcon,
     MagnifyingGlassIcon,
+    PaperAirplaneIcon,
+    PresentationChartLineIcon,
     QuestionMarkCircleIcon,
     UserCircleIcon,
 } from "@heroicons/react/24/outline";
@@ -63,7 +72,7 @@ export default function FeaturesDrawer({ open, onClose }) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 bg-bg text-white flex flex-col animate-slide-up">
+        <div className="app-light fixed inset-0 z-50 bg-bg text-white flex flex-col animate-slide-up">
             {/* User header */}
             <UserHeader dashboard={dashboard} onBack={onClose} />
 
@@ -150,20 +159,20 @@ function DashboardContent({ data }) {
         <div className="px-4 py-4 space-y-3">
             {/* Insight Hari Ini */}
             <Card>
-                <CardTitle icon="💡">INSIGHT HARI INI</CardTitle>
+                <CardTitle icon={LightBulbIcon}>INSIGHT HARI INI</CardTitle>
                 <p className="text-[0.65rem] text-white/40 mb-3">
                     Diperbaharui: {new Date().toLocaleDateString("id-ID")}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                    <Tile label="↑ Pemasukan Hari Ini" value={rp(today.income)} tone="up" />
-                    <Tile label="↓ Pengeluaran Hari Ini" value={rp(today.expense)} tone="down" />
+                    <Tile label="Pemasukan Hari Ini" value={rp(today.income)} tone="up" />
+                    <Tile label="Pengeluaran Hari Ini" value={rp(today.expense)} tone="down" />
                 </div>
             </Card>
 
             {/* Plan & Kredit */}
             <Card>
                 <div className="flex items-center justify-between">
-                    <CardTitle icon="📦">PLAN & KREDIT</CardTitle>
+                    <CardTitle icon={CubeIcon}>PLAN & KREDIT</CardTitle>
                     <span className="text-xs text-white/50">
                         {plan.credits_used || 0}/{plan.credits_total || 0}
                     </span>
@@ -199,11 +208,11 @@ function DashboardContent({ data }) {
             {/* Score & Subs */}
             <div className="grid grid-cols-2 gap-3">
                 <Card>
-                    <CardTitle icon="❤️">FINANCIAL SCORE</CardTitle>
+                    <CardTitle icon={HeartIcon}>FINANCIAL SCORE</CardTitle>
                     <FinancialScore />
                 </Card>
                 <Card>
-                    <CardTitle icon="🔁">RIWAYAT SUBS</CardTitle>
+                    <CardTitle icon={ArrowPathRoundedSquareIcon}>RIWAYAT SUBS</CardTitle>
                     <p className="text-[0.65rem] text-white/40 mt-1 mb-2">
                         Riwayat pembayaran & perubahan plan
                     </p>
@@ -230,7 +239,7 @@ function FinancialScore() {
         <div className="flex flex-col items-center mt-2">
             <div className="relative w-20 h-20">
                 <svg viewBox="0 0 36 36" className="-rotate-90">
-                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="3" />
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(15,23,42,0.1)" strokeWidth="3" />
                     <circle
                         cx="18" cy="18" r="15.9" fill="none"
                         stroke="#F5841F" strokeWidth="3"
@@ -296,12 +305,12 @@ function CashflowContent() {
     return (
         <div className="px-4 py-4 space-y-3">
             <Card>
-                <CardTitle icon="🍰">SPENDING</CardTitle>
+                <CardTitle icon={ChartPieIcon}>SPENDING</CardTitle>
                 <SpendingPie data={spending} />
             </Card>
             <Card>
                 <div className="flex items-center justify-between mb-2">
-                    <CardTitle icon="📈">CASHFLOW TREN</CardTitle>
+                    <CardTitle icon={PresentationChartLineIcon}>CASHFLOW TREN</CardTitle>
                     <div className="flex gap-1 text-[0.6rem]">
                         {[
                             { v: "daily", l: "Days" },
@@ -346,7 +355,9 @@ function SpendingPie({ data }) {
                             {cats.map((c, i) => (<Cell key={i} fill={c.color} />))}
                         </Pie>
                         <Tooltip
-                            contentStyle={{ background: "#0f1c33", border: "1px solid #1f2a40", borderRadius: 8, fontSize: 12 }}
+                            contentStyle={{ background: "#ffffff", border: "1px solid rgba(15,23,42,0.1)", borderRadius: 8, fontSize: 12, boxShadow: "0 4px 12px rgba(15,23,42,0.08)" }}
+                            labelStyle={{ color: "#0f172a" }}
+                            itemStyle={{ color: "#0f172a" }}
                             formatter={(v) => rp(v)}
                         />
                     </PieChart>
@@ -379,10 +390,12 @@ function CashflowChart({ data }) {
         <div className="h-48 -mx-1">
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
-                    <XAxis dataKey="label" stroke="rgba(255,255,255,0.4)" fontSize={10} />
-                    <YAxis stroke="rgba(255,255,255,0.4)" fontSize={10} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
+                    <XAxis dataKey="label" stroke="rgba(15,23,42,0.45)" fontSize={10} />
+                    <YAxis stroke="rgba(15,23,42,0.45)" fontSize={10} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
                     <Tooltip
-                        contentStyle={{ background: "#0f1c33", border: "1px solid #1f2a40", borderRadius: 8, fontSize: 12 }}
+                        contentStyle={{ background: "#ffffff", border: "1px solid rgba(15,23,42,0.1)", borderRadius: 8, fontSize: 12, boxShadow: "0 4px 12px rgba(15,23,42,0.08)" }}
+                        labelStyle={{ color: "#0f172a" }}
+                        itemStyle={{ color: "#0f172a" }}
                         formatter={(v) => rp(v)}
                     />
                     <Line type="monotone" dataKey="income" stroke="#5DA9F6" strokeWidth={2} dot={false} />
@@ -783,7 +796,7 @@ function LinkedAccountsPanel() {
         <div className="space-y-3">
             <div className="bg-card border border-border rounded-2xl p-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-sky-500/15 text-sky-300 flex items-center justify-center shrink-0 text-base">📨</div>
+                    <div className="w-10 h-10 rounded-full bg-sky-500/15 text-sky-300 flex items-center justify-center shrink-0"><PaperAirplaneIcon className="w-5 h-5" /></div>
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold">Telegram</p>
                         <p className="text-[0.65rem] text-white/40">
@@ -828,7 +841,7 @@ function LinkedAccountsPanel() {
                             onClick={copyCode}
                             className="w-full text-center text-[0.7rem] text-white/50 hover:text-orange"
                         >
-                            {copied ? "Kode disalin ✓" : `Atau kirim manual: /start link_${link.code} (salin kode)`}
+                            {copied ? "Kode disalin" : `Atau kirim manual: /start link_${link.code} (salin kode)`}
                         </button>
                         <p className="text-[0.6rem] text-white/30 text-center">Kode berlaku 15 menit.</p>
                     </div>
@@ -844,7 +857,7 @@ function LinkedAccountsPanel() {
             </div>
 
             <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3 opacity-60">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-300 flex items-center justify-center shrink-0 text-base">💬</div>
+                <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-300 flex items-center justify-center shrink-0"><ChatBubbleLeftRightIcon className="w-5 h-5" /></div>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold">WhatsApp</p>
                     <p className="text-[0.65rem] text-white/40">Segera hadir</p>
@@ -1161,19 +1174,23 @@ function Card({ children }) {
     );
 }
 
-function CardTitle({ icon, children }) {
+function CardTitle({ icon: Icon, children }) {
     return (
         <div className="flex items-center gap-2 text-orange">
-            <span className="text-base">{icon}</span>
+            {Icon ? <Icon className="w-4 h-4" /> : null}
             <span className="text-xs font-bold tracking-wider">{children}</span>
         </div>
     );
 }
 
 function Tile({ label, value, tone }) {
+    const ToneIcon = tone === "up" ? ArrowTrendingUpIcon : ArrowTrendingDownIcon;
     return (
         <div className={`rounded-xl px-3 py-3 ${tone === "up" ? "bg-emerald-500/10" : "bg-rose-500/10"}`}>
-            <p className="text-[0.6rem] text-white/50 mb-1">{label}</p>
+            <p className="text-[0.6rem] text-white/50 mb-1 flex items-center gap-1">
+                <ToneIcon className={`w-3 h-3 ${tone === "up" ? "text-emerald-400" : "text-rose-400"}`} />
+                {label}
+            </p>
             <p className={`text-base font-bold ${tone === "up" ? "text-emerald-400" : "text-rose-400"}`}>
                 {value}
             </p>

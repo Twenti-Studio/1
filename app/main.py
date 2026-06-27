@@ -81,6 +81,7 @@ async def _send_weekly_summaries():
     )
     from app.webhook.telegram import send_telegram_message
     from app.services.push_service import send_push_to_user
+    from app.services.chat_service import save_chat_message
     from worker.analysis_service import get_weekly_analysis, get_weekly_strategy
 
     logger.info("📊 Starting weekly summary broadcast...")
@@ -160,9 +161,15 @@ async def _send_weekly_summaries():
                     int(user.id),
                     "Ringkasan Mingguan FiNot",
                     plain_summary,
-                    url="/dashboard/insight",
+                    url="/chat",
                     category="weekly_summary",
                 )
+                # Mirror into the chat room so the reminder also shows up in the chat app
+                try:
+                    await save_chat_message(int(user.id), "assistant", message, kind="system")
+                    delivered += 1
+                except Exception as e:
+                    logger.debug(f"weekly summary chat mirror skipped for {user.id}: {e}")
                 if delivered:
                     await consume_ai_credit(int(user.id), amount=3)
                     sent_count += 1
@@ -214,6 +221,7 @@ async def _send_daily_notifications():
     from app.services.subscription_service import get_user_plan, check_ai_credits
     from app.webhook.telegram import send_telegram_message
     from app.services.push_service import send_push_to_user
+    from app.services.chat_service import save_chat_message
     from worker.analysis_service import get_smart_notification
 
     logger.info("📢 Starting daily notification broadcast...")
@@ -264,9 +272,15 @@ async def _send_daily_notifications():
                     int(user.id),
                     "Pengingat FiNot",
                     plain_message or "Ada insight keuangan baru untukmu.",
-                    url="/dashboard/insight",
+                    url="/chat",
                     category="spending_alert",
                 )
+                # Mirror into the chat room so it appears in the chat app like Telegram
+                try:
+                    await save_chat_message(int(user.id), "assistant", message, kind="system")
+                    delivered += 1
+                except Exception as e:
+                    logger.debug(f"daily notification chat mirror skipped for {user.id}: {e}")
                 if delivered:
                     sent_count += 1
 
@@ -349,6 +363,55 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ── Friendly validation errors ─────────────
+# Tanpa handler ini, kalau field numerik (mis. pemasukan tetap) dikirim sebagai
+# string, FastAPI membalas 422 dengan dump teknis yang membingungkan user.
+# Handler ini menerjemahkannya ke pesan Bahasa Indonesia yang jelas per-field.
+from fastapi.exceptions import RequestValidationError  # noqa: E402
+
+_FIELD_LABELS = {
+    "fixed_income": "Pemasukan tetap",
+    "monthly_dependents": "Jumlah tanggungan",
+    "amount": "Nominal",
+    "new_password": "Password baru",
+    "current_password": "Password lama",
+    "password": "Password",
+    "email": "Email",
+    "username": "Username",
+    "scenario": "Skenario",
+    "goal": "Target",
+}
+
+
+def _friendly_validation_message(errors: list) -> str:
+    parts = []
+    for err in errors:
+        loc = [p for p in err.get("loc", []) if p != "body"]
+        field = loc[-1] if loc else "input"
+        label = _FIELD_LABELS.get(field, str(field).replace("_", " ").capitalize())
+        etype = err.get("type", "")
+        if "int" in etype or "float" in etype or "number" in etype or etype.endswith("_parsing"):
+            parts.append(f"{label} harus berupa angka.")
+        elif etype == "missing":
+            parts.append(f"{label} wajib diisi.")
+        elif "string" in etype:
+            parts.append(f"{label} harus berupa teks.")
+        else:
+            parts.append(f"{label} tidak valid.")
+    # Hilangkan duplikat sambil menjaga urutan.
+    seen = set()
+    unique = [p for p in parts if not (p in seen or seen.add(p))]
+    return " ".join(unique) or "Data yang dikirim tidak valid."
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=400,
+        content={"success": False, "error": _friendly_validation_message(exc.errors())},
+    )
+
+
 # ── Routes ─────────────────────────────────
 app.include_router(telegram_router)
 app.include_router(trakteer_router)
@@ -370,12 +433,18 @@ if LANDING_DIR.exists():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="landing-assets")
 
 
+# index.html and the service worker must never be served stale, otherwise a
+# returning PWA keeps pointing at hashed asset bundles from a previous deploy
+# (which 404). Hashed /assets/* files stay immutable-cacheable.
+_NO_CACHE_HEADERS = {"Cache-Control": "no-cache, no-store, must-revalidate"}
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def root(request: Request):
     """Serve React SPA index.html."""
     index_file = LANDING_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(str(index_file), media_type="text/html")
+        return FileResponse(str(index_file), media_type="text/html", headers=_NO_CACHE_HEADERS)
     raise HTTPException(status_code=404, detail="SPA not built yet")
 
 
@@ -442,9 +511,12 @@ async def spa_catchall(path: str):
     # (e.g. logo.jpeg, favicon.jpeg copied from public/)
     static_file = (LANDING_DIR / path).resolve()
     if static_file.is_file() and str(static_file).startswith(str(LANDING_DIR.resolve())) and not path.endswith(".html"):
+        # The service worker must always revalidate so new deploys are picked up.
+        if path == "sw.js":
+            return FileResponse(str(static_file), headers=_NO_CACHE_HEADERS)
         return FileResponse(str(static_file))
 
     index_file = LANDING_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(str(index_file), media_type="text/html")
+        return FileResponse(str(index_file), media_type="text/html", headers=_NO_CACHE_HEADERS)
     raise HTTPException(status_code=404)

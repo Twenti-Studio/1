@@ -554,6 +554,7 @@ Kirim pesan seperti:
 /analysis weekly - Ringkasan mingguan
 /saving - Rekomendasi tabungan
 /budget - Saran budget per kategori
+/skema [nama jumlah] - Atur/lihat skema budget (mis. /skema nongkrong 500rb)
 /goal [target] - Target tabungan
 /prediction - Prediksi pengeluaran bulanan
 /detect - Deteksi langganan berulang
@@ -857,6 +858,9 @@ async def _handle_command(chat_id: int, user_id: int, text: str):
 
     elif command == "/budget":
         await _handle_budget_command(chat_id, user_id)
+
+    elif command in ("/skema", "/scheme"):
+        await _handle_skema_command(chat_id, user_id, args)
 
     elif command == "/goal":
         await _handle_goal_command(chat_id, user_id, args)
@@ -1765,6 +1769,45 @@ async def _handle_burnrate_command(chat_id: int, user_id: int):
         await send_telegram_message(chat_id, "Gagal menganalisis.")
 
 
+async def _handle_skema_command(chat_id: int, user_id: int, args: list):
+    """List or set the user's budget schemes."""
+    from app.services.scheme_service import (
+        list_schemes, parse_scheme_from_text, create_scheme, format_scheme_confirmation,
+    )
+
+    raw = " ".join(args or []).strip()
+    if raw:
+        parsed = parse_scheme_from_text(f"set skema {raw}")
+        if parsed:
+            await create_scheme(
+                user_id,
+                name=parsed["name"], categories=parsed["categories"],
+                limit=parsed["limit"], period=parsed["period"], threshold=parsed["threshold"],
+            )
+            await send_telegram_message(chat_id, format_scheme_confirmation(parsed))
+            return
+        await send_telegram_message(
+            chat_id,
+            "Format skema kurang jelas. Contoh: <code>/skema nongkrong 500rb</code>",
+        )
+        return
+
+    schemes = await list_schemes(user_id)
+    if not schemes:
+        await send_telegram_message(
+            chat_id,
+            "Belum ada skema. Buat dengan: <code>/skema nongkrong 500rb</code>",
+        )
+        return
+
+    lines = ["<b>Skema Keuangan Kamu</b>", "━━━━━━━━━━━━━━━━━━━━━━━━", ""]
+    for s in schemes:
+        period_label = "minggu" if s.period == "weekly" else "bulan"
+        amount = f"Rp{int(s.limit):,}".replace(",", ".")
+        lines.append(f"• <b>{s.name}</b>: {amount}/{period_label} (peringatan {s.threshold}%)")
+    await send_telegram_message(chat_id, "\n".join(lines))
+
+
 async def _handle_budget_command(chat_id: int, user_id: int):
     """#8 Smart Budget Suggestion."""
     access = await check_credits_and_consume(user_id, feature="budget_suggestion")
@@ -2277,6 +2320,23 @@ async def _handle_text(chat_id: int, user_id: int, text: str):
                 # Any other message = decline, clean up
                 del _pending_analysis[user_id]
 
+        # Budget scheme fast-path: "set skema nongkrong 500rb"
+        from app.services.scheme_service import (
+            parse_scheme_from_text, create_scheme, format_scheme_confirmation,
+        )
+        parsed_scheme = parse_scheme_from_text(text)
+        if parsed_scheme:
+            await create_scheme(
+                user_id,
+                name=parsed_scheme["name"],
+                categories=parsed_scheme["categories"],
+                limit=parsed_scheme["limit"],
+                period=parsed_scheme["period"],
+                threshold=parsed_scheme["threshold"],
+            )
+            await send_telegram_message(chat_id, format_scheme_confirmation(parsed_scheme))
+            return
+
         from worker.llm.intent_classifier import classify_intent, UserIntent
 
         # Classify intent
@@ -2433,8 +2493,11 @@ async def _process_text_transaction(chat_id: int, user_id: int, text: str):
         response = format_transaction_response(result)
         await send_telegram_message(chat_id, response)
 
-        # Offer analysis menu based on user's plan (saves tokens)
         if result.get("success") and result.get("transactions"):
+            # Budget scheme warnings (parity with the web chat agent)
+            await _send_scheme_alerts(chat_id, user_id, result["transactions"])
+
+            # Offer analysis menu based on user's plan (saves tokens)
             menu_text, choices = await _build_post_tx_menu(user_id)
             if menu_text and choices:
                 _pending_analysis[user_id] = {
@@ -2448,6 +2511,38 @@ async def _process_text_transaction(chat_id: int, user_id: int, text: str):
     except Exception as e:
         logger.error(f"Error processing text transaction: {e}", exc_info=True)
         await send_telegram_message(chat_id, "Gagal memproses transaksi.")
+
+
+async def _send_scheme_alerts(chat_id: int, user_id: int, transactions: list):
+    """Emit budget scheme warnings (and offer to set one after new income)."""
+    try:
+        from app.services.scheme_service import check_schemes_after_expense
+
+        for alert in await check_schemes_after_expense(user_id):
+            await send_telegram_message(chat_id, alert["message"])
+            try:
+                from app.services.push_service import send_push_to_user
+                import re as _re
+                await send_push_to_user(
+                    user_id,
+                    f"Peringatan Budget: {alert['name']}",
+                    _re.sub(r"<[^>]+>", "", alert["message"]),
+                    url="/chat",
+                    category="spending_alert",
+                )
+            except Exception:
+                pass
+
+        # Invite the user to set a scheme right after new income.
+        if any(t.get("intent") == "income" for t in transactions):
+            await send_telegram_message(
+                chat_id,
+                "💡 Mau atur skema keuangan dari pemasukan ini?\n"
+                "Contoh: <i>set skema nongkrong 500rb</i> — nanti saya ingatkan "
+                "otomatis saat pemakaian mendekati batas.",
+            )
+    except Exception as e:
+        logger.debug(f"scheme alerts skipped: {e}")
 
 
 async def _send_insight_only(chat_id: int, user_id: int, tx_result: dict):
@@ -2633,14 +2728,13 @@ async def _handle_photo(
         )
 
         response = format_transaction_response(result)
-
-        if result.get("ocr_confidence"):
-            response += f"\OCR Confidence: {result['ocr_confidence']:.0f}%"
+        # Confidence OCR sengaja TIDAK ditampilkan ke user (hanya untuk log internal).
 
         await send_telegram_message(chat_id, response)
 
         # Offer analysis menu after receipt scan
         if result.get("success") and result.get("transactions"):
+            await _send_scheme_alerts(chat_id, user_id, result["transactions"])
             menu_text, choices = await _build_post_tx_menu(user_id)
             if menu_text and choices:
                 _pending_analysis[user_id] = {
@@ -2694,6 +2788,7 @@ async def _handle_audio(chat_id: int, user_id: int, message: dict):
 
         # Offer analysis menu after voice transaction
         if result.get("success") and result.get("transactions"):
+            await _send_scheme_alerts(chat_id, user_id, result["transactions"])
             menu_text, choices = await _build_post_tx_menu(user_id)
             if menu_text and choices:
                 _pending_analysis[user_id] = {

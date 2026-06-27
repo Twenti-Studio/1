@@ -1,5 +1,6 @@
 import { ArrowDownIcon, ArrowUpIcon, HeartIcon } from "@heroicons/react/24/outline";
 import { useDashboardAPI } from "../../../hooks/useDashboardAPI";
+import SectionError from "./SectionError";
 
 const Spinner = () => <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />;
 
@@ -11,7 +12,7 @@ function getScoreColor(score) {
 }
 
 export default function HealthScore() {
-  const { data, loading } = useDashboardAPI("/health-score");
+  const { data, loading, error, refetch } = useDashboardAPI("/health-score");
 
   const score = data?.score ?? 0;
   const label = data?.label || "-";
@@ -35,6 +36,8 @@ export default function HealthScore() {
         <div className="flex items-center justify-center py-12">
           <Spinner />
         </div>
+      ) : error ? (
+        <SectionError error={error} onRetry={refetch} className="py-12" />
       ) : (
         <div className="flex flex-col sm:flex-row items-center gap-6">
           {/* Circular gauge */}

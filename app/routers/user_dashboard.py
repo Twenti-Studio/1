@@ -318,6 +318,18 @@ async def submit_onboarding(req: OnboardingRequest, user_id: int = Depends(requi
         return JSONResponse({"success": False, "error": "Nama lengkap dan pekerjaan wajib diisi"}, status_code=400)
     if req.fixed_income < 0 or req.monthly_dependents < 0:
         return JSONResponse({"success": False, "error": "Nilai tidak boleh negatif"}, status_code=400)
+    # fixedIncome disimpan sebagai INT4 (32-bit) di database, maksimum 2.147.483.647
+    INT4_MAX = 2_147_483_647
+    if req.fixed_income > INT4_MAX:
+        return JSONResponse({
+            "success": False,
+            "error": "Pemasukan tetap terlalu besar. Maksimal Rp 2.147.483.647.",
+        }, status_code=400)
+    if req.monthly_dependents > INT4_MAX:
+        return JSONResponse({
+            "success": False,
+            "error": "Jumlah tanggungan terlalu besar.",
+        }, status_code=400)
 
     user = await update_onboarding_profile(
         prisma,
@@ -655,39 +667,83 @@ async def user_dashboard(user_id: int = Depends(require_user)):
     }
 
 
+UNCATEGORIZED = "tidak terkategori"
+
+
 @router.get("/spending")
-async def user_spending(user_id: int = Depends(require_user)):
-    """Spending breakdown by category for current month."""
+async def user_spending(
+    period: str = "monthly",
+    user_id: int = Depends(require_user),
+):
+    """Spending breakdown by category, filterable by period.
+
+    period: daily (hari ini) | weekly (7 hari terakhir) | monthly (bulan ini).
+    Untuk kategori 'tidak terkategori', sertakan rincian tiap input user beserta
+    persentasenya supaya bisa ditampilkan di menu titik-tiga pada UI.
+    """
     now = _utcnow()
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    period = (period or "monthly").lower()
+    if period == "daily":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        period_label = "Hari ini"
+    elif period == "weekly":
+        start = (now - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
+        period_label = "7 hari terakhir"
+    else:
+        period = "monthly"
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        period_label = "Bulan ini"
 
     txs = await prisma.transaction.find_many(
         where={
             "userId": user_id,
             "intent": "expense",
-            "createdAt": {"gte": month_start},
+            "createdAt": {"gte": start},
         },
     )
 
-    # Group by category
+    # Group by category (kategori bebas, ikuti input user)
     cat_map: Dict[str, int] = {}
+    uncategorized_items: List[Dict[str, Any]] = []
     for t in txs:
-        cat = t.category or "Lainnya"
+        cat = (t.category or UNCATEGORIZED).strip() or UNCATEGORIZED
         cat_map[cat] = cat_map.get(cat, 0) + t.amount
+        if cat.lower() == UNCATEGORIZED:
+            uncategorized_items.append({
+                "label": (t.note or "").strip() or "(tanpa keterangan)",
+                "amount": t.amount,
+            })
+
+    total = sum(cat_map.values())
 
     # Assign colors
     COLORS = ["#F5841F", "#38BDF8", "#A78BFA", "#34D399", "#FB7185", "#94A3B8",
               "#FBBF24", "#818CF8", "#F472B6", "#2DD4BF"]
+    GREY = "#64748B"  # warna khusus untuk 'tidak terkategori'
 
     categories = []
     for i, (cat, val) in enumerate(sorted(cat_map.items(), key=lambda x: x[1], reverse=True)):
-        categories.append({
+        entry = {
             "name": cat,
             "value": val,
-            "color": COLORS[i % len(COLORS)],
-        })
+            "color": GREY if cat.lower() == UNCATEGORIZED else COLORS[i % len(COLORS)],
+            "percentage": round((val / total) * 100, 1) if total > 0 else 0,
+        }
+        if cat.lower() == UNCATEGORIZED:
+            # Rincian tiap input user + persentase terhadap total spending periode ini.
+            details = sorted(uncategorized_items, key=lambda x: x["amount"], reverse=True)
+            for d in details:
+                d["percentage"] = round((d["amount"] / total) * 100, 1) if total > 0 else 0
+            entry["details"] = details
+        categories.append(entry)
 
-    return {"categories": categories, "total": sum(cat_map.values())}
+    return {
+        "categories": categories,
+        "total": total,
+        "period": period,
+        "period_label": period_label,
+    }
 
 
 @router.get("/cashflow")
@@ -698,18 +754,30 @@ async def user_cashflow(
     """Cashflow trend data: income vs expense grouped by period."""
     now = _utcnow()
 
+    # Compute the query window so it always INCLUDES the current period
+    # (today / this week / this month). The previous logic stopped one period
+    # short, so freshly-added income never showed up in weekly/monthly views.
+    months: list = []
     if period == "daily":
-        # Last 7 days
-        start = now - timedelta(days=6)
-        start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Last 7 days incl. today
+        start = (now - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
     elif period == "weekly":
-        # Last 4 weeks
-        start = now - timedelta(weeks=4)
-        start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Last 4 weeks incl. the current week (Monday-based)
+        today0 = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        this_monday = today0 - timedelta(days=today0.weekday())
+        start = this_monday - timedelta(weeks=3)
     else:
-        # Last 6 months
-        start = now - timedelta(days=180)
-        start = start.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Last 6 calendar months incl. the current month
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        yy, mm = month_start.year, month_start.month
+        for _ in range(6):
+            months.append((yy, mm))
+            mm -= 1
+            if mm == 0:
+                mm = 12
+                yy -= 1
+        months.reverse()
+        start = month_start.replace(year=months[0][0], month=months[0][1])
 
     txs = await prisma.transaction.find_many(
         where={
@@ -735,28 +803,31 @@ async def user_cashflow(
         data = list(buckets.values())
 
     elif period == "weekly":
-        # Group by week
+        # Group by week, keyed by the Monday of each week so a transaction's
+        # week always maps to the matching bucket.
         buckets = {}
         for i in range(4):
             ws = start + timedelta(weeks=i)
-            key = ws.strftime("%Y-W%W")
-            buckets[key] = {"label": f"Mgg {i + 1}", "income": 0, "expense": 0}
+            key = ws.strftime("%Y-%m-%d")
+            label = "Minggu ini" if i == 3 else f"{3 - i} mgg lalu"
+            buckets[key] = {"label": label, "income": 0, "expense": 0}
         for t in txs:
             dt = t.txDate or t.createdAt
-            key = dt.strftime("%Y-W%W")
+            d0 = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+            mon = d0 - timedelta(days=d0.weekday())
+            key = mon.strftime("%Y-%m-%d")
             if key in buckets:
                 buckets[key][t.intent] = buckets[key].get(t.intent, 0) + t.amount
         data = list(buckets.values())
 
     else:
-        # Group by month
+        # Group by calendar month
         month_names = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
                        "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
         buckets = {}
-        for i in range(6):
-            d = start + timedelta(days=30 * i)
-            key = d.strftime("%Y-%m")
-            buckets[key] = {"label": month_names[d.month - 1], "income": 0, "expense": 0}
+        for (yy, mm) in months:
+            key = f"{yy}-{mm:02d}"
+            buckets[key] = {"label": month_names[mm - 1], "income": 0, "expense": 0}
         for t in txs:
             dt = t.txDate or t.createdAt
             key = dt.strftime("%Y-%m")
@@ -1489,7 +1560,7 @@ async def user_transactions(
             "id": str(t.id),
             "intent": t.intent,
             "amount": t.amount,
-            "category": t.category or "Lainnya",
+            "category": t.category or UNCATEGORIZED,
             "note": t.note or "",
             "date": _fmt_date(t.txDate or t.createdAt),
             "created_at": (t.txDate or t.createdAt).isoformat(),

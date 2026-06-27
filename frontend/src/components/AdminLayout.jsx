@@ -19,7 +19,7 @@ export default function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    fetch("/admin/api/me")
+    fetch("/admin/api/me", { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -32,7 +32,7 @@ export default function AdminLayout() {
   }, [navigate]);
 
   const handleLogout = async () => {
-    await fetch("/admin/api/logout");
+    await fetch("/admin/api/logout", { credentials: "include" });
     navigate("/admin/login");
   };
 

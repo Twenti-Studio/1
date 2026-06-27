@@ -2,7 +2,7 @@
    Network-first for navigations; cache-first for hashed static assets.
    Intentionally NOT caching /api/* (always live). */
 
-const CACHE = "finot-chat-v2";
+const CACHE = "finot-chat-v3";
 const PRECACHE = ["/", "/chat", "/manifest.webmanifest", "/finot-logo.png", "/finot_logo-192.png", "/finot_logo-512.png"];
 
 self.addEventListener("install", (event) => {

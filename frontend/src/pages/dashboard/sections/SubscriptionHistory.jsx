@@ -7,6 +7,7 @@ import {
     DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { useDashboardAPI } from "../../../hooks/useDashboardAPI";
+import SectionError from "./SectionError";
 
 const Spinner = () => <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />;
 
@@ -66,7 +67,7 @@ function TypeBadge({ type }) {
 }
 
 export default function SubscriptionHistory() {
-  const { data, loading } = useDashboardAPI("/subscriptions");
+  const { data, loading, error, refetch } = useDashboardAPI("/subscriptions");
   const history = data?.history || [];
 
   function downloadInvoice(h) {
@@ -116,6 +117,8 @@ export default function SubscriptionHistory() {
         <div className="flex items-center justify-center py-8">
           <Spinner />
         </div>
+      ) : error ? (
+        <SectionError error={error} onRetry={refetch} className="py-8" />
       ) : history.length === 0 ? (
         <div className="text-center py-8 text-white/30 text-sm">
           Belum ada riwayat langganan

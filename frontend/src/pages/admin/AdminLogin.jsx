@@ -18,11 +18,17 @@ export default function AdminLogin() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    // Read the live field values (covers browser autofill that fills the DOM
+    // but doesn't fire React onChange), falling back to state.
+    const form = e.currentTarget;
+    const u = (form.username?.value ?? username).trim();
+    const p = (form.password?.value ?? password).trim();
     try {
       const res = await fetch("/admin/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        credentials: "include",
+        body: JSON.stringify({ username: u, password: p }),
       });
       const data = await res.json();
       if (data.success) navigate("/admin/dashboard");
@@ -56,6 +62,8 @@ export default function AdminLogin() {
             <label className="block text-sm text-white/70 mb-1.5 font-medium">Username</label>
             <input
               type="text"
+              name="username"
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -67,6 +75,8 @@ export default function AdminLogin() {
             <label className="block text-sm text-white/70 mb-1.5 font-medium">Password</label>
             <input
               type="password"
+              name="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

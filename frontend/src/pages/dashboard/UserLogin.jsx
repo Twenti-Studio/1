@@ -36,7 +36,7 @@ export default function UserLogin() {
   }
 
   useEffect(() => {
-    if (user) navigate(user.plan === "free" ? "/chat" : "/dashboard", { replace: true });
+    if (user) navigate("/chat", { replace: true });
   }, [user, navigate]);
 
   async function handleSubmit(e) {
@@ -46,8 +46,7 @@ export default function UserLogin() {
     const result = await login(username, password);
     setLoading(false);
     if (result.success) {
-      const target = result.user?.plan === "free" ? "/chat" : "/dashboard";
-      navigate(target, { replace: true });
+      navigate("/chat", { replace: true });
     } else {
       setError(result.error);
     }

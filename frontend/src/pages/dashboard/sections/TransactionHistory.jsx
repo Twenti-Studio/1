@@ -3,6 +3,7 @@ import {
     ArrowPathIcon,
     ArrowTrendingDownIcon,
     ArrowTrendingUpIcon,
+    ExclamationTriangleIcon,
     FunnelIcon,
 } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
@@ -32,6 +33,7 @@ export default function TransactionHistory() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [exporting, setExporting] = useState(false);
 
   // Filters
@@ -43,6 +45,7 @@ export default function TransactionHistory() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams();
       params.set("page", page.toString());
@@ -55,14 +58,21 @@ export default function TransactionHistory() {
       const res = await fetch(`/api/user/transactions?${params}`, {
         credentials: "include",
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        throw new Error(
+          res.status === 401
+            ? "Sesi berakhir, silakan login ulang"
+            : `Gagal memuat transaksi (error ${res.status})`
+        );
+      }
       const data = await res.json();
       setItems(data.items || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
       if (data.categories) setCategories(data.categories);
-    } catch {
+    } catch (err) {
       setItems([]);
+      setError(err.message || "Gagal memuat transaksi");
     } finally {
       setLoading(false);
     }
@@ -214,6 +224,17 @@ export default function TransactionHistory() {
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Spinner />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+          <ExclamationTriangleIcon className="w-8 h-8 text-amber-400/70 mb-2" />
+          <p className="text-sm text-white/60">{error}</p>
+          <button
+            onClick={fetchData}
+            className="mt-3 px-3 py-1.5 rounded-lg bg-white/10 text-xs font-medium text-white/80 hover:bg-white/15 transition-colors"
+          >
+            Coba lagi
+          </button>
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-12 text-white/30 text-sm">

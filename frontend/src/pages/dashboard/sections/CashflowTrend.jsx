@@ -1,4 +1,4 @@
-import { ArrowTrendingUpIcon } from "@heroicons/react/24/outline";
+import { ArrowTrendingUpIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
 import {
     Area,
@@ -46,20 +46,27 @@ export default function CashflowTrend() {
   const [period, setPeriod] = useState("mingguan");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(
         `/api/user/cashflow?period=${PERIOD_MAP[period]}`,
         { credentials: "include" }
       );
-      if (res.ok) {
-        const json = await res.json();
-        setData(json.data || []);
+      if (!res.ok) {
+        throw new Error(
+          res.status === 401
+            ? "Sesi berakhir, silakan login ulang"
+            : `Gagal memuat data (error ${res.status})`
+        );
       }
-    } catch {
-      // Silent fail
+      const json = await res.json();
+      setData(json.data || []);
+    } catch (err) {
+      setError(err.message || "Gagal memuat data cashflow");
     } finally {
       setLoading(false);
     }
@@ -104,6 +111,17 @@ export default function CashflowTrend() {
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <Spinner />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+          <ExclamationTriangleIcon className="w-8 h-8 text-amber-400/70 mb-2" />
+          <p className="text-sm text-white/60">{error}</p>
+          <button
+            onClick={fetchData}
+            className="mt-3 px-3 py-1.5 rounded-lg bg-white/10 text-xs font-medium text-white/80 hover:bg-white/15 transition-colors"
+          >
+            Coba lagi
+          </button>
         </div>
       ) : data.length === 0 ? (
         <div className="flex items-center justify-center h-64 text-white/30 text-sm">

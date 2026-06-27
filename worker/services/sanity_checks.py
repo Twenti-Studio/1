@@ -6,61 +6,40 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-VALID_CATEGORIES = [
-    "makan",
-    "minuman",
-    "belanja",
-    "transportasi",
-    "tagihan",
-    "hiburan",
-    "kesehatan",
-    "pendidikan",
-    "gaji",
-    "transfer",
-    "tabungan",
-    "investasi",
-    "lainnya",
-]
+# Kategori TIDAK dipatok ke daftar tetap. User bebas memakai kata apapun
+# (mis. "nongkrong", "kopi", "skincare"). Kategori di bawah hanya dipakai
+# sebagai bahan contoh untuk LLM — BUKAN whitelist yang memaksa.
 
-CATEGORY_MAPPING = {
-    # Typo / singkatan
+# Bucket khusus untuk transaksi yang benar-benar tidak jelas kategorinya.
+UNCATEGORIZED = "tidak terkategori"
+
+# Safety net ringan untuk typo/singkatan paling umum. Ini BUKAN NLP penuh —
+# koreksi typo utama ditangani LLM. Map ini hanya jaring pengaman terakhir
+# kalau LLM meloloskan singkatan yang sudah pasti maksudnya.
+CATEGORY_TYPO_MAP = {
     "mkn": "makan",
+    "mkan": "makan",
+    "makn": "makan",
+    "mknn": "makan",
+    "mnm": "minuman",
     "minum": "minuman",
     "transport": "transportasi",
-    "bill": "tagihan",
-    "health": "kesehatan",
-    "salary": "gaji",
-    # Bahasa Inggris
-    "food": "makan",
-    "drink": "minuman",
-    "shopping": "belanja",
-    "entertainment": "hiburan",
-    "education": "pendidikan",
-    "saving": "tabungan",
-    "savings": "tabungan",
-    "investment": "investasi",
-    # Common variations
-    "jajan": "makan",
-    "bensin": "transportasi",
+    "transpot": "transportasi",
+    "trnsport": "transportasi",
     "ojol": "transportasi",
-    "parkir": "transportasi",
-    "wifi": "tagihan",
-    "listrik": "tagihan",
-    "air": "tagihan",
-    "pulsa": "tagihan",
-    "game": "hiburan",
-    "nonton": "hiburan",
-    "obat": "kesehatan",
-    "dokter": "kesehatan",
-    "sekolah": "pendidikan",
-    "kursus": "pendidikan",
-    "gaji bulanan": "gaji",
-    "transfer uang": "transfer",
+    "bensin": "bensin",
+    "blnja": "belanja",
+    "belanjaan": "belanja",
+    "tagian": "tagihan",
+    "tagiahan": "tagihan",
+    "kesehatn": "kesehatan",
+    "pndidikan": "pendidikan",
+    "pendidkan": "pendidikan",
+    "gajian": "gaji",
     "nabung": "tabungan",
+    "tabung": "tabungan",
     "invest": "investasi",
-    "saham": "investasi",
-    "reksadana": "investasi",
-    "crypto": "investasi",
+    "investasii": "investasi",
 }
 
 
@@ -125,22 +104,31 @@ def run_sanity_checks(parsed_output: Dict) -> Dict:
 
 
 def validate_and_normalize_category(category: str) -> Dict:
-    """Validate dan normalize category."""
-    if not category:
-        return {"normalized": "lainnya", "was_corrected": True}
+    """Normalisasi kategori TANPA memaksa ke daftar tetap.
 
-    normalized = category.lower().strip()
+    Aturan:
+    - Kategori dibiarkan sesuai input user (free-form), hanya dirapikan
+      (lowercase + trim spasi berlebih).
+    - Typo/singkatan yang sudah pasti dikoreksi via safety net ringan
+      (koreksi typo utama tetap tanggung jawab LLM, bukan NLP penuh di sini).
+    - Kalau kosong atau jelas tidak bermakna → 'tidak terkategori'.
+    """
+    if not category or not str(category).strip():
+        return {"normalized": UNCATEGORIZED, "was_corrected": True}
 
-    # Exact match
-    if normalized in VALID_CATEGORIES:
-        return {"normalized": normalized, "was_corrected": False}
+    normalized = " ".join(str(category).lower().split())
 
-    # Try mapping
-    if normalized in CATEGORY_MAPPING:
-        mapped = CATEGORY_MAPPING[normalized]
-        logger.debug(f"Category mapped: '{category}' → '{mapped}'")
-        return {"normalized": mapped, "was_corrected": True}
+    # LLM sudah boleh mengembalikan 'tidak terkategori' secara eksplisit.
+    if normalized in (UNCATEGORIZED, "uncategorized", "tidak jelas", "tidak diketahui", "unknown"):
+        return {"normalized": UNCATEGORIZED, "was_corrected": False}
 
-    # Fallback
-    logger.warning(f"Unknown category: '{category}', fallback to 'lainnya'")
-    return {"normalized": "lainnya", "was_corrected": True}
+    # Safety net typo (jaring pengaman terakhir, bukan NLP penuh).
+    if normalized in CATEGORY_TYPO_MAP:
+        mapped = CATEGORY_TYPO_MAP[normalized]
+        if mapped != normalized:
+            logger.debug(f"Category typo corrected: '{category}' → '{mapped}'")
+            return {"normalized": mapped, "was_corrected": True}
+        return {"normalized": mapped, "was_corrected": False}
+
+    # Selain itu: hormati kata user apa adanya.
+    return {"normalized": normalized, "was_corrected": False}

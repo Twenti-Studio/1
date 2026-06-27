@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AdminLayout from "./components/AdminLayout";
 import ChatLayout from "./components/ChatLayout";
-import DashboardLayout from "./components/DashboardLayout";
 import Layout from "./components/Layout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminLegal from "./pages/admin/AdminLegal";
@@ -10,17 +9,9 @@ import AdminReports from "./pages/admin/AdminReports";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminVouchers from "./pages/admin/AdminVouchers";
-import CashflowPage from "./pages/dashboard/CashflowPage";
 import ChatPage from "./pages/dashboard/ChatPage";
-import InsightPage from "./pages/dashboard/InsightPage";
-import ReportPage from "./pages/dashboard/ReportPage";
-import SettingsPage from "./pages/dashboard/SettingsPage";
-import SimulationPage from "./pages/dashboard/SimulationPage";
-import SubscriptionPage from "./pages/dashboard/SubscriptionPage";
-import TransactionPage from "./pages/dashboard/TransactionPage";
 import Register from "./pages/dashboard/Register";
 import ResetPassword from "./pages/dashboard/ResetPassword";
-import UserDashboard from "./pages/dashboard/UserDashboard";
 import UserLogin from "./pages/dashboard/UserLogin";
 import VerifyEmail from "./pages/dashboard/VerifyEmail";
 import Faq from "./pages/Faq";
@@ -55,17 +46,9 @@ export default function App() {
         <Route index element={<ChatPage />} />
       </Route>
 
-      {/* User Dashboard (Protected by DashboardLayout) */}
-      <Route path="dashboard" element={<DashboardLayout />}>
-        <Route index element={<UserDashboard />} />
-        <Route path="cashflow" element={<CashflowPage />} />
-        <Route path="simulasi" element={<SimulationPage />} />
-        <Route path="langganan" element={<SubscriptionPage />} />
-        <Route path="transaksi" element={<TransactionPage />} />
-        <Route path="report" element={<ReportPage />} />
-        <Route path="insight" element={<InsightPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-      </Route>
+      {/* Dashboard removed — the chat room is now the single post-login surface.
+          Any legacy /dashboard/* link redirects straight to the chat. */}
+      <Route path="dashboard/*" element={<Navigate to="/chat" replace />} />
 
       {/* Admin */}
       <Route path="admin/login" element={<AdminLogin />} />

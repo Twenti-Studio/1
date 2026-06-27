@@ -151,12 +151,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const me = await fetch("/admin/api/me");
+        const me = await fetch("/admin/api/me", { credentials: "include" });
         if (!me.ok) {
           navigate("/admin/login");
           return;
         }
-        const res = await fetch("/admin/api/dashboard");
+        const res = await fetch("/admin/api/dashboard", { credentials: "include" });
         if (!res.ok) {
           navigate("/admin/login");
           return;
@@ -184,6 +184,7 @@ export default function AdminDashboard() {
       const res = await fetch("/admin/api/credits/adjust", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           user_id: creditForm.userId,
           action: creditForm.action,
@@ -217,6 +218,7 @@ export default function AdminDashboard() {
       const res = await fetch("/admin/api/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(broadcastForm),
       });
       const d = await res.json();

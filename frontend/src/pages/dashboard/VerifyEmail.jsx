@@ -65,12 +65,27 @@ export default function VerifyEmail() {
       setError("Nama lengkap dan pekerjaan wajib diisi.");
       return;
     }
+    const INT4_MAX = 2147483647;
+    const income = fixedIncome === "" ? 0 : Number(fixedIncome);
+    const deps = dependents === "" ? 0 : Number(dependents);
+    if (!Number.isFinite(income) || income < 0) {
+      setError("Pemasukan tetap harus berupa angka yang valid (≥ 0).");
+      return;
+    }
+    if (!Number.isFinite(deps) || deps < 0 || !Number.isInteger(deps)) {
+      setError("Jumlah tanggungan harus berupa bilangan bulat ≥ 0.");
+      return;
+    }
+    if (income > INT4_MAX) {
+      setError("Pemasukan tetap terlalu besar. Maksimal Rp 2.147.483.647.");
+      return;
+    }
     setSaving(true);
     const res = await submitOnboarding({
       full_name: fullName.trim(),
       occupation,
-      fixed_income: parseInt(fixedIncome || "0", 10) || 0,
-      monthly_dependents: parseInt(dependents || "0", 10) || 0,
+      fixed_income: Math.floor(income),
+      monthly_dependents: Math.floor(deps),
     });
     setSaving(false);
     if (res.success) navigate("/chat", { replace: true });

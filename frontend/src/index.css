@@ -53,9 +53,21 @@
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
 }
 
-/* ── Base ──────────────────────────────── */
-html {
-  scroll-behavior: smooth;
+/* ── App (post-login) light surface ─────────
+   The landing/marketing pages stay on the dark brand theme. The signed-in
+   app (chat, features drawer, auth pages) uses a clean white surface.
+   Tailwind v4 emits color utilities as var(--color-*), so flipping these
+   tokens on a wrapper cascades to every utility (text-white, bg-white/10,
+   bg-card, border-border, bg-navy-dark, …) without touching each class. */
+.app-light {
+  --color-bg: #f1f5f9;                 /* page background — soft light slate */
+  --color-card: #ffffff;               /* cards / raised surfaces */
+  --color-border: rgba(15, 23, 42, 0.10);
+  --color-navy-dark: #ffffff;          /* sticky headers / sidebars / sheets */
+  /* Flip literal white so text-white & white/NN opacities read dark on light */
+  --color-white: #0f172a;
+  background-color: var(--color-bg);
+  color: #1e293b;                      /* override body's text-slate-100 default */
 }
 
 body {

@@ -29,8 +29,8 @@ async def save_transaction(
             "intent": parsed_data["intent"],
             "amount": int(parsed_data["amount"]),
             "currency": parsed_data.get("currency", "IDR"),
-            "category": sanity_result.get("normalized_category", parsed_data.get("category", "lainnya"))
-            if sanity_result else parsed_data.get("category", "lainnya"),
+            "category": sanity_result.get("normalized_category", parsed_data.get("category", "tidak terkategori"))
+            if sanity_result else parsed_data.get("category", "tidak terkategori"),
             "note": parsed_data.get("note", ""),
             "needsReview": sanity_result.get("needs_review", False) if sanity_result else False,
         }

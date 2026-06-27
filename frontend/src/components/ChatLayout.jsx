@@ -16,7 +16,7 @@ export default function ChatLayout() {
 
     if (loading) {
         return (
-            <div className="h-[100dvh] w-full bg-bg flex items-center justify-center">
+            <div className="app-light h-[100dvh] w-full bg-bg flex items-center justify-center">
                 <div className="w-6 h-6 border-2 border-orange border-t-transparent rounded-full animate-spin" />
             </div>
         );
@@ -27,7 +27,7 @@ export default function ChatLayout() {
     }
 
     return (
-        <div className="h-[100dvh] w-full bg-bg text-white overflow-hidden">
+        <div className="app-light h-[100dvh] w-full bg-bg text-white overflow-hidden">
             <Outlet />
         </div>
     );

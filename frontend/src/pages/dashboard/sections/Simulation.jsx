@@ -8,6 +8,7 @@ export default function Simulation({ hasAccess = false }) {
   const { data: dash } = useDashboardAPI("/dashboard");
   const [amount, setAmount] = useState(10000);
   const [result, setResult] = useState(null);
+  const [inputError, setInputError] = useState("");
 
   // AI scenario
   const [scenario, setScenario] = useState("");
@@ -20,7 +21,13 @@ export default function Simulation({ hasAccess = false }) {
   const monthExpense = dash?.this_month?.expense ?? 0;
 
   function simulate(val) {
-    const daily = val;
+    const daily = Number(val);
+    if (!Number.isFinite(daily) || daily < 1000) {
+      setInputError("Masukkan jumlah berupa angka, minimal Rp1.000.");
+      setResult(null);
+      return;
+    }
+    setInputError("");
     const weekly = daily * 7;
     const monthly = daily * 30;
     const yearly = daily * 365;
@@ -100,7 +107,11 @@ export default function Simulation({ hasAccess = false }) {
             min={1000}
             step={1000}
             value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setAmount(raw === "" ? "" : Number(raw));
+              if (inputError) setInputError("");
+            }}
             className="w-full pl-9 pr-3 py-2.5 bg-white/5 border border-border rounded-lg text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-orange/50 focus:border-orange/50 transition-colors"
             placeholder="Jumlah per hari"
           />
@@ -112,6 +123,12 @@ export default function Simulation({ hasAccess = false }) {
           <SparklesIcon className="w-3.5 h-3.5" /> Hitung
         </button>
       </form>
+
+      {inputError && (
+        <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 text-xs text-rose-400 mb-4 -mt-2">
+          {inputError}
+        </div>
+      )}
 
       {/* Results */}
       {result && (

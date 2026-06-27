@@ -69,7 +69,7 @@ def format_transaction_response(result: dict) -> str:
         tipo = "Pemasukan" if tx.get("intent") == "income" else "Pengeluaran"
         sign = "+" if tx.get("intent") == "income" else "−"
         amount = tx.get("amount", 0)
-        category = tx.get("category", "Lainnya")
+        category = tx.get("category") or "tidak terkategori"
 
         if len(transactions) > 1:
             lines.append(f"<b>#{idx}</b>")
@@ -233,9 +233,18 @@ _VOUCHER_RE = re.compile(r"^FN-[A-Z0-9-]+$", re.IGNORECASE)
 # Public entry points
 # ──────────────────────────────────────────────────────────
 
-async def handle_text_message(user_id: int, text: str) -> Dict[str, Any]:
+async def handle_text_message(
+    user_id: int,
+    text: str,
+    reply_to: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
     Process a text message coming from the FiNot web chat UI.
+
+    `reply_to` is the optional swipe-to-reply context the user attached:
+        {"id": ..., "role": "assistant"|"user", "content": "<quoted text>"}
+    It is stored on the user bubble and prepended to the AI prompt so the
+    assistant knows which message is being replied to.
 
     Returns a dict:
         {
@@ -250,8 +259,18 @@ async def handle_text_message(user_id: int, text: str) -> Dict[str, Any]:
             "tx_result": None,
         }
 
-    # Persist user message
-    await save_chat_message(user_id, "user", text, kind="text")
+    reply_ctx = _clean_reply_to(reply_to)
+
+    # Persist user message (carry the reply context in meta so the UI can render the quote)
+    await save_chat_message(
+        user_id, "user", text, kind="text",
+        meta={"reply_to": reply_ctx} if reply_ctx else None,
+    )
+
+    # ── Budget scheme fast-path (set/atur skema) ──
+    scheme_reply = await _try_handle_scheme(user_id, text, reply_ctx)
+    if scheme_reply is not None:
+        return scheme_reply
 
     # ── Voucher fast-path ──
     if _VOUCHER_RE.match(text):
@@ -300,9 +319,10 @@ async def handle_text_message(user_id: int, text: str) -> Dict[str, Any]:
 
     # ── AI Chat — open-ended finance question ──
     if intent == "ai_chat":
-        reply = await _run_ai_chat(user_id, text)
-        await save_chat_message(user_id, "assistant", reply, kind="text")
-        return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
+        reply = await _run_ai_chat(user_id, _with_reply_context(text, reply_ctx))
+        out_meta = {"reply_to": reply_ctx} if reply_ctx else None
+        await save_chat_message(user_id, "assistant", reply, kind="text", meta=out_meta)
+        return {"messages": [{"role": "assistant", "kind": "text", "content": reply, "meta": out_meta or {}}], "tx_result": None}
 
     # ── Help intent ──
     if intent == "help":
@@ -324,9 +344,10 @@ async def handle_text_message(user_id: int, text: str) -> Dict[str, Any]:
     has_digits = any(ch.isdigit() for ch in text)
     if intent != "transaction" and not has_digits and confidence < 0.5:
         # Likely not a transaction, but no specific intent matched — fall back to AI chat
-        reply = await _run_ai_chat(user_id, text)
-        await save_chat_message(user_id, "assistant", reply, kind="text")
-        return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
+        reply = await _run_ai_chat(user_id, _with_reply_context(text, reply_ctx))
+        out_meta = {"reply_to": reply_ctx} if reply_ctx else None
+        await save_chat_message(user_id, "assistant", reply, kind="text", meta=out_meta)
+        return {"messages": [{"role": "assistant", "kind": "text", "content": reply, "meta": out_meta or {}}], "tx_result": None}
 
     from worker import process_text_message
 
@@ -342,9 +363,10 @@ async def handle_text_message(user_id: int, text: str) -> Dict[str, Any]:
     txs = result.get("transactions") or []
     has_valid_tx = any((t.get("amount") or 0) > 0 for t in txs)
     if not has_valid_tx:
-        reply = await _run_ai_chat(user_id, text)
-        await save_chat_message(user_id, "assistant", reply, kind="text")
-        return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
+        reply = await _run_ai_chat(user_id, _with_reply_context(text, reply_ctx))
+        out_meta = {"reply_to": reply_ctx} if reply_ctx else None
+        await save_chat_message(user_id, "assistant", reply, kind="text", meta=out_meta)
+        return {"messages": [{"role": "assistant", "kind": "text", "content": reply, "meta": out_meta or {}}], "tx_result": None}
 
     reply = format_transaction_response(result)
     out_meta = {"tx_ids": [t.get("transaction_id") for t in result.get("transactions", []) if t.get("transaction_id")]}
@@ -352,8 +374,16 @@ async def handle_text_message(user_id: int, text: str) -> Dict[str, Any]:
 
     messages = [{"role": "assistant", "kind": "text", "content": reply, "meta": out_meta}]
 
-    # Offer post-tx analysis menu (same as Telegram, but returned inline)
     if result.get("success") and result.get("transactions"):
+        # Agent: offer to set a budget scheme right after new income.
+        offer = await _maybe_offer_scheme(user_id, result["transactions"])
+        if offer:
+            messages.append(offer)
+
+        # Budget warnings: re-check every active scheme after this expense.
+        messages.extend(await _emit_scheme_alerts(user_id))
+
+        # Offer post-tx analysis menu (same as Telegram, but returned inline)
         menu = await _build_post_tx_menu(user_id)
         if menu:
             await save_chat_message(user_id, "assistant", menu["text"], kind="system", meta={"choices": menu["choices"]})
@@ -396,10 +426,174 @@ async def _run_ai_chat(user_id: int, question: str) -> str:
             return "Hmm, saya belum punya jawaban yang pas. Coba tanyakan lagi dengan cara lain."
 
         await consume_ai_credit(user_id)
+
+        # Soft nudge: if this was a budget-planning question, offer to turn the
+        # advice into an auto-reminding scheme (without forcing one on the user).
+        try:
+            from app.services.scheme_service import suggest_scheme_command
+
+            hint_cmd = suggest_scheme_command(question)
+            if hint_cmd and "skema" not in answer.lower():
+                answer += (
+                    f"\n\n<i>Kalau mau aku ingatkan otomatis saat mendekati batas, "
+                    f"simpan jadi skema — ketik:</i> <b>{hint_cmd}</b>"
+                )
+        except Exception:
+            pass
+
         return f"💬 {answer}"
     except Exception as e:
         logger.error(f"_run_ai_chat failed: {e}", exc_info=True)
         return "Maaf, terjadi kesalahan saat menjawab. Coba lagi sebentar."
+
+
+# ──────────────────────────────────────────────────────────
+# Reply-context helpers (swipe-to-reply)
+# ──────────────────────────────────────────────────────────
+
+def _strip_html(text: str) -> str:
+    return re.sub(r"<[^>]+>", "", text or "").strip()
+
+
+def _clean_reply_to(reply_to: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Normalize the swipe-reply payload coming from the client."""
+    if not reply_to or not isinstance(reply_to, dict):
+        return None
+    content = _strip_html(str(reply_to.get("content") or ""))
+    if not content:
+        return None
+    return {
+        "id": str(reply_to.get("id") or ""),
+        "role": reply_to.get("role") or "assistant",
+        "content": content[:280],
+    }
+
+
+def _with_reply_context(text: str, reply_ctx: Optional[Dict[str, Any]]) -> str:
+    """Prepend the quoted message so the AI knows what is being replied to."""
+    if not reply_ctx:
+        return text
+    who = "FiNot" if reply_ctx.get("role") == "assistant" else "pengguna"
+    return (
+        f"[Konteks balasan] Pengguna membalas pesan {who} sebelumnya: "
+        f"\"{reply_ctx['content']}\".\n"
+        f"Balasan/pertanyaan pengguna: {text}\n"
+        f"Jawab dengan mengacu pada pesan yang dibalas itu."
+    )
+
+
+# ──────────────────────────────────────────────────────────
+# Budget scheme agent
+# ──────────────────────────────────────────────────────────
+
+async def _try_handle_scheme(
+    user_id: int,
+    text: str,
+    reply_ctx: Optional[Dict[str, Any]] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    If the message defines a budget scheme, create it and return a chat response.
+    Returns None when the message is not a scheme instruction.
+
+    When the user is replying to FiNot's "atur skema?" offer we parse leniently
+    (a name + amount is enough, the trigger word is optional).
+    """
+    from app.services.scheme_service import (
+        parse_scheme_from_text,
+        create_scheme,
+        format_scheme_confirmation,
+    )
+
+    parsed = parse_scheme_from_text(text)
+
+    # Lenient mode: replying to the scheme offer bubble.
+    replying_to_offer = bool(
+        reply_ctx and "skema" in (reply_ctx.get("content") or "").lower()
+    )
+    if not parsed and replying_to_offer:
+        parsed = parse_scheme_from_text(f"set skema {text}")
+
+    if not parsed:
+        return None
+
+    try:
+        scheme = await create_scheme(
+            user_id,
+            name=parsed["name"],
+            categories=parsed["categories"],
+            limit=parsed["limit"],
+            period=parsed["period"],
+            threshold=parsed["threshold"],
+        )
+    except Exception as e:
+        logger.error(f"create_scheme failed: {e}", exc_info=True)
+        reply = "Maaf, gagal menyimpan skema. Coba lagi sebentar."
+        await save_chat_message(user_id, "assistant", reply, kind="text")
+        return {"messages": [{"role": "assistant", "kind": "text", "content": reply}], "tx_result": None}
+
+    reply = format_scheme_confirmation(parsed)
+    meta = {"scheme_id": getattr(scheme, "id", None)}
+    await save_chat_message(user_id, "assistant", reply, kind="text", meta=meta)
+    return {
+        "messages": [{"role": "assistant", "kind": "text", "content": reply, "meta": meta}],
+        "tx_result": None,
+    }
+
+
+async def _maybe_offer_scheme(
+    user_id: int, transactions: List[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    """After recording new income, invite the user to set a budget scheme."""
+    has_income = any(t.get("intent") == "income" for t in transactions)
+    if not has_income:
+        return None
+
+    text = (
+        "<b>Mau atur skema keuangan dari pemasukan ini?</b>\n"
+        "Misalnya batasi <i>nongkrong</i> Rp500rb/bulan — saya akan ingatkan otomatis "
+        "saat pemakaian mendekati batas.\n\n"
+        "Balas pesan ini (geser ke kanan) dengan contoh: "
+        "<i>nongkrong 500rb</i> atau ketik <i>set skema nongkrong 500rb</i>."
+    )
+    choices = [
+        {"key": "scheme_set", "label": "Atur Skema"},
+        {"key": "scheme_skip", "label": "Nanti"},
+    ]
+    meta = {"choices": choices, "scheme_offer": True}
+    await save_chat_message(user_id, "assistant", text, kind="system", meta=meta)
+    return {"role": "assistant", "kind": "system", "content": text, "meta": meta}
+
+
+async def _emit_scheme_alerts(user_id: int) -> List[Dict[str, Any]]:
+    """Check budget schemes after an expense; persist + push any new warnings."""
+    out: List[Dict[str, Any]] = []
+    try:
+        from app.services.scheme_service import check_schemes_after_expense
+
+        alerts = await check_schemes_after_expense(user_id)
+    except Exception as e:
+        logger.error(f"check_schemes_after_expense failed: {e}", exc_info=True)
+        return out
+
+    for alert in alerts:
+        msg = alert["message"]
+        meta = {"scheme_id": alert["scheme_id"], "scheme_alert": True}
+        await save_chat_message(user_id, "assistant", msg, kind="system", meta=meta)
+        out.append({"role": "assistant", "kind": "system", "content": msg, "meta": meta})
+        # Push immediately so the warning reaches the user even outside the app.
+        try:
+            from app.services.push_service import send_push_to_user
+
+            await send_push_to_user(
+                user_id,
+                f"Peringatan Budget: {alert['name']}",
+                _strip_html(msg),
+                url="/chat",
+                category="spending_alert",
+            )
+        except Exception as e:
+            logger.warning(f"push for scheme alert failed: {e}")
+    return out
 
 
 async def handle_image_message(
@@ -442,14 +636,17 @@ async def handle_image_message(
         )
 
         reply = format_transaction_response(result)
-        if result.get("ocr_confidence"):
-            reply += f"\n\n<i>OCR confidence: {result['ocr_confidence']:.0f}%</i>"
+        # Confidence OCR sengaja TIDAK ditampilkan ke user (hanya untuk log internal).
 
         await save_chat_message(user_id, "assistant", reply, kind="text",
                                 meta={"receipt_id": receipt.id})
 
         messages = [{"role": "assistant", "kind": "text", "content": reply}]
         if result.get("success") and result.get("transactions"):
+            offer = await _maybe_offer_scheme(user_id, result["transactions"])
+            if offer:
+                messages.append(offer)
+            messages.extend(await _emit_scheme_alerts(user_id))
             menu = await _build_post_tx_menu(user_id)
             if menu:
                 await save_chat_message(user_id, "assistant", menu["text"], kind="system",
@@ -493,6 +690,10 @@ async def handle_audio_message(
 
         messages = [{"role": "assistant", "kind": "text", "content": reply}]
         if result.get("success") and result.get("transactions"):
+            offer = await _maybe_offer_scheme(user_id, result["transactions"])
+            if offer:
+                messages.append(offer)
+            messages.extend(await _emit_scheme_alerts(user_id))
             menu = await _build_post_tx_menu(user_id)
             if menu:
                 await save_chat_message(user_id, "assistant", menu["text"], kind="system",

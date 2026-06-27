@@ -1,5 +1,7 @@
 import {
     ArrowLeftOnRectangleIcon,
+    ArrowRightIcon,
+    ArrowUturnLeftIcon,
     Bars3Icon,
     MicrophoneIcon,
     PaperAirplaneIcon,
@@ -74,6 +76,7 @@ export default function ChatPage() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sessions, setSessions] = useState([]);
     const [selectedDate, setSelectedDate] = useState(todayStr());
+    const [replyTo, setReplyTo] = useState(null);
     const scrollRef = useRef(null);
     const fileInputRef = useRef(null);
     const recorderRef = useRef(null);
@@ -141,7 +144,7 @@ export default function ChatPage() {
         }
     }
 
-    function appendLocalUser(content, kind = "text") {
+    function appendLocalUser(content, kind = "text", meta = {}) {
         setMessages((prev) => [
             ...prev,
             {
@@ -149,9 +152,20 @@ export default function ChatPage() {
                 role: "user",
                 kind,
                 content,
+                meta,
                 created_at: new Date().toISOString(),
             },
         ]);
+    }
+
+    /** Build the compact reply context sent to the backend / stored on the bubble. */
+    function buildReplyCtx(msg) {
+        if (!msg) return null;
+        return {
+            id: String(msg.id || ""),
+            role: msg.role || "assistant",
+            content: stripHtml(msg.content || "").slice(0, 280),
+        };
     }
 
     function appendAssistant(items = []) {
@@ -173,8 +187,10 @@ export default function ChatPage() {
         const text = input.trim();
         if (!text || sending) return;
         await ensureToday();
-        appendLocalUser(text, "text");
+        const replyCtx = buildReplyCtx(replyTo);
+        appendLocalUser(text, "text", replyCtx ? { reply_to: replyCtx } : {});
         setInput("");
+        setReplyTo(null);
         setSending(true);
         setError("");
         try {
@@ -182,7 +198,7 @@ export default function ChatPage() {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text }),
+                body: JSON.stringify({ text, reply_to: replyCtx }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
@@ -367,7 +383,7 @@ export default function ChatPage() {
                         )}
                     </div>
                 )}
-                {messages.map((m) => (<MessageBubble key={m.id} msg={m} />))}
+                {messages.map((m) => (<MessageBubble key={m.id} msg={m} onReply={setReplyTo} />))}
                 {sending && (
                     <div className="flex items-center gap-1.5 text-white/50 text-xs px-2">
                         <span className="inline-block w-1.5 h-1.5 bg-orange rounded-full animate-bounce" />
@@ -382,14 +398,36 @@ export default function ChatPage() {
                 <button
                     type="button"
                     onClick={newChat}
-                    className="flex-shrink-0 px-4 py-2 text-[0.7rem] text-orange/90 bg-orange/10 border-t border-orange/20 hover:bg-orange/15"
+                    className="flex-shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 text-[0.7rem] text-orange/90 bg-orange/10 border-t border-orange/20 hover:bg-orange/15"
                 >
-                    Kamu melihat chat lama. Ketuk untuk kembali ke chat hari ini →
+                    Kamu melihat chat lama. Ketuk untuk kembali ke chat hari ini
+                    <ArrowRightIcon className="w-3.5 h-3.5" />
                 </button>
             )}
 
             {error && (
                 <div className="flex-shrink-0 px-4 py-2 text-xs text-red-300 bg-red-500/10 border-t border-red-500/20">{error}</div>
+            )}
+
+            {/* Reply preview (swipe-to-reply) */}
+            {replyTo && (
+                <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 border-t border-orange/20 bg-orange/10">
+                    <ArrowUturnLeftIcon className="w-4 h-4 text-orange shrink-0" />
+                    <div className="flex-1 min-w-0 border-l-2 border-orange pl-2">
+                        <p className="text-[0.65rem] text-orange font-semibold">
+                            Membalas {replyTo.role === "user" ? "pesanmu" : "FiNot"}
+                        </p>
+                        <p className="text-xs text-white/70 truncate">{stripHtml(replyTo.content)}</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setReplyTo(null)}
+                        className="p-1 text-white/50 hover:text-white shrink-0"
+                        aria-label="Batal balas"
+                    >
+                        <XMarkIcon className="w-4 h-4" />
+                    </button>
+                </div>
             )}
 
             {/* Composer */}
@@ -510,19 +548,88 @@ function ChatSidebar({ open, onClose, sessions, selectedDate, onSelect, onNewCha
     );
 }
 
-function MessageBubble({ msg }) {
+/** Swipe-to-reply hook: drag a bubble left→right past a threshold to reply. */
+function useSwipeToReply(onTrigger) {
+    const startX = useRef(0);
+    const startY = useRef(0);
+    const active = useRef(false);
+    const [dx, setDx] = useState(0);
+    const THRESHOLD = 60;
+
+    function down(clientX, clientY) {
+        startX.current = clientX;
+        startY.current = clientY;
+        active.current = true;
+    }
+    function move(clientX, clientY) {
+        if (!active.current) return;
+        const deltaX = clientX - startX.current;
+        const deltaY = Math.abs(clientY - startY.current);
+        // Only react to mostly-horizontal rightward drags
+        if (deltaX > 0 && deltaX > deltaY) {
+            setDx(Math.min(deltaX, 90));
+        }
+    }
+    function up() {
+        if (!active.current) return;
+        active.current = false;
+        if (dx >= THRESHOLD) onTrigger();
+        setDx(0);
+    }
+
+    const handlers = {
+        onTouchStart: (e) => down(e.touches[0].clientX, e.touches[0].clientY),
+        onTouchMove: (e) => move(e.touches[0].clientX, e.touches[0].clientY),
+        onTouchEnd: up,
+        onPointerDown: (e) => { if (e.pointerType === "mouse") down(e.clientX, e.clientY); },
+        onPointerMove: (e) => { if (e.pointerType === "mouse") move(e.clientX, e.clientY); },
+        onPointerUp: (e) => { if (e.pointerType === "mouse") up(); },
+        onPointerLeave: (e) => { if (e.pointerType === "mouse") up(); },
+    };
+    return { handlers, dx, reached: dx >= THRESHOLD };
+}
+
+function ReplyQuote({ replyTo, isUser }) {
+    if (!replyTo) return null;
+    return (
+        <div className={`mb-1.5 border-l-2 pl-2 py-0.5 rounded-sm ${isUser ? "border-white/60 bg-white/10" : "border-orange bg-black/20"}`}>
+            <p className={`text-[0.6rem] font-semibold ${isUser ? "text-white/80" : "text-orange"}`}>
+                {replyTo.role === "user" ? "Pesanmu" : "FiNot"}
+            </p>
+            <p className="text-[0.7rem] opacity-80 truncate">{stripHtml(replyTo.content)}</p>
+        </div>
+    );
+}
+
+function MessageBubble({ msg, onReply }) {
     const [lightbox, setLightbox] = useState(false);
     const isUser = msg.role === "user";
-    if (msg.kind === "system") return <SystemCard msg={msg} />;
+    const swipe = useSwipeToReply(() => onReply && onReply(msg));
+    if (msg.kind === "system") return <SystemCard msg={msg} onReply={onReply} />;
 
     const fileUrl = msg.meta?.file_url;
     const isImage = msg.kind === "image" && fileUrl;
     const isAudio = msg.kind === "audio" && fileUrl;
+    const replyTo = msg.meta?.reply_to;
 
     return (
         <>
-            <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] rounded-2xl text-sm leading-relaxed shadow-sm overflow-hidden ${isUser ? "bg-orange text-white rounded-br-sm" : "bg-white/10 text-white rounded-bl-sm"} ${isImage ? "p-1" : "px-3.5 py-2"}`}>
+            <div
+                className={`relative flex items-center ${isUser ? "justify-end" : "justify-start"}`}
+                {...swipe.handlers}
+                style={{ touchAction: "pan-y" }}
+            >
+                <span
+                    className={`absolute left-1 text-orange transition-opacity ${swipe.dx > 8 ? "opacity-100" : "opacity-0"}`}
+                    aria-hidden="true"
+                >
+                    <ArrowUturnLeftIcon className="w-4 h-4" />
+                </span>
+                <div
+                    className={`max-w-[80%] rounded-2xl text-sm leading-relaxed shadow-sm overflow-hidden ${isUser ? "bg-orange text-white rounded-br-sm" : "bg-white/10 text-white rounded-bl-sm"} ${isImage ? "p-1" : "px-3.5 py-2"}`}
+                    style={{ transform: `translateX(${swipe.dx}px)`, transition: swipe.dx === 0 ? "transform 0.15s ease-out" : "none" }}
+                >
+                    {!isImage && <ReplyQuote replyTo={replyTo} isUser={isUser} />}
                     {isImage ? (
                         <button
                             type="button"
@@ -576,18 +683,38 @@ function MessageBubble({ msg }) {
     );
 }
 
-function SystemCard({ msg }) {
+function SystemCard({ msg, onReply }) {
     const choices = msg.meta?.choices || [];
+    const swipe = useSwipeToReply(() => onReply && onReply(msg));
     return (
-        <div className="flex justify-start">
-            <div className="max-w-[85%] w-full rounded-2xl rounded-bl-sm bg-white/5 border border-border px-3.5 py-3 text-sm text-white">
+        <div
+            className="flex justify-start items-center relative"
+            {...swipe.handlers}
+            style={{ touchAction: "pan-y" }}
+        >
+            <span
+                className={`absolute left-1 text-orange transition-opacity ${swipe.dx > 8 ? "opacity-100" : "opacity-0"}`}
+                aria-hidden="true"
+            >
+                <ArrowUturnLeftIcon className="w-4 h-4" />
+            </span>
+            <div
+                className="max-w-[85%] w-full rounded-2xl rounded-bl-sm bg-white/5 border border-border px-3.5 py-3 text-sm text-white"
+                style={{ transform: `translateX(${swipe.dx}px)`, transition: swipe.dx === 0 ? "transform 0.15s ease-out" : "none" }}
+            >
+                <ReplyQuote replyTo={msg.meta?.reply_to} isUser={false} />
                 <div className="whitespace-pre-wrap break-words text-white/80 mb-2" dangerouslySetInnerHTML={{ __html: sanitize(msg.content) }} />
                 {choices.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                         {choices.map((c) => (
-                            <span key={c.key} className="px-2.5 py-1 rounded-full bg-orange/20 text-orange text-[0.7rem] font-medium border border-orange/30">
+                            <button
+                                key={c.key}
+                                type="button"
+                                onClick={() => onReply && onReply(msg)}
+                                className="px-2.5 py-1 rounded-full bg-orange/20 text-orange text-[0.7rem] font-medium border border-orange/30 hover:bg-orange/30 active:bg-orange/40 transition-colors"
+                            >
                                 {c.label}
-                            </span>
+                            </button>
                         ))}
                     </div>
                 )}
@@ -601,4 +728,9 @@ function sanitize(html) {
     return String(html)
         .replace(/<(?!\/?(b|i|br|strong|em)\b)[^>]*>/gi, "")
         .replace(/\n/g, "<br/>");
+}
+
+function stripHtml(html) {
+    if (!html) return "";
+    return String(html).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }

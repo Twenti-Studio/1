@@ -44,7 +44,10 @@ Rules untuk INTENT:
 - "Pengeluaran": Uang keluar (bayar, beli, transfer keluar, hilang, dll)
 
 Rules untuk CATEGORY:
-Gunakan kategori yang sesuai dengan deskripsi transaksi user. Jangan dipaksa ke kategori tertentu. Contoh: jika user bilang "nongkrong di kafe" maka category bisa "nongkrong" atau "kafe", jika "beli bensin" maka category "bensin" atau "transportasi". Ikuti kata-kata yang user pakai.
+- Kategori BEBAS, ikuti kata yang user pakai. JANGAN dipaksa ke daftar tetap. Contoh: "nongkrong di kafe" → "nongkrong"; "beli bensin" → "bensin"; "skincare" → "skincare".
+- Perbaiki typo/singkatan yang sudah jelas maksudnya menjadi kata baku, contoh: "mkn"/"mkan" → "makan", "mnm" → "minuman", "trnsport" → "transportasi", "gajian" → "gaji". Cukup koreksi ejaan — JANGAN mengarang kategori baru di luar maksud user.
+- Jika benar-benar TIDAK JELAS barang/keperluannya (mis. cuma "bayar 50rb", "transfer 20rb" tanpa konteks), set category = "tidak terkategori". Jangan menebak-nebak.
+- Tulis category dalam huruf kecil.
 
 Amount rules:
 - Parse Indonesian slang: "25rb"→25000, "5jt"→5000000, "150k"→150000
@@ -93,7 +96,7 @@ Output: {
        "amount":20000,
        "currency":"IDR",
        "date":"yesterday",
-       "category":"lainnya",
+       "category":"rokok",
        "note":"Beli rokok kemarin",
        "confidence":0.88
      },
@@ -146,7 +149,7 @@ Format output JSON (SINGLE transaction):
   ]
 }
 
-CATEGORY detection:
+CATEGORY detection (bebas, ikuti jenis toko — ini hanya contoh, bukan daftar wajib):
 - Indomaret/Alfamart/minimarket → "belanja"
 - Warteg/Restoran/Cafe/food → "makan"
 - Starbucks/Kopi/drink → "minuman"
@@ -154,7 +157,7 @@ CATEGORY detection:
 - PLN/Listrik/Telkom/pulsa → "tagihan"
 - Cinema/XXI/bioskop → "hiburan"
 - Gojek/Grab/taxi → "transportasi"
-- Lainnya → "lainnya"
+- Jika jenis toko/struk tidak bisa dikenali → "tidak terkategori"
 
 AMOUNT parsing rules:
 - Cari baris dengan kata: TOTAL, JUMLAH, AMOUNT, GRAND TOTAL, BAYAR
@@ -201,7 +204,7 @@ Amount words to numbers:
 - "lima ratus ribu" → 500000
 - "sejuta" / "satu juta" → 1000000
 
-Category options: makan, minuman, belanja, transportasi, tagihan, hiburan, kesehatan, pendidikan, gaji, transfer, tabungan, investasi, lainnya
+Category: bebas, ikuti kata user (mis. "makan", "nongkrong", "bensin"). Perbaiki typo/hasil transkripsi yang jelas (mis. "mkn" → "makan"). Tulis huruf kecil. Jika benar-benar tidak jelas keperluannya, set "tidak terkategori".
 """
 
     user_input = f'\nInput (Voice Transcription):\n"{transcribed_text}"\n\nOutput:'

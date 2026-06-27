@@ -1,8 +1,9 @@
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import { useDashboardAPI } from "../../../hooks/useDashboardAPI";
+import SectionError from "./SectionError";
 
 export default function Recommendation() {
-  const { data, loading } = useDashboardAPI("/recommendation");
+  const { data, loading, error, refetch } = useDashboardAPI("/recommendation");
 
   const recommendation = data?.recommendation;
   const balance = data?.balance ?? 0;
@@ -56,6 +57,8 @@ export default function Recommendation() {
         <div className="flex items-center justify-center py-6">
           <div className="w-5 h-5 border-2 border-white/20 border-t-violet-400 rounded-full animate-spin" />
         </div>
+      ) : error ? (
+        <SectionError error={error} onRetry={refetch} className="py-6" />
       ) : recommendation ? (
         <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/15">
           <p className="text-sm text-white/80 leading-relaxed">{recommendation}</p>

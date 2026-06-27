@@ -6,6 +6,7 @@ import {
     ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import { useDashboardAPI } from "../../../hooks/useDashboardAPI";
+import SectionError from "./SectionError";
 
 const Spinner = () => <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />;
 
@@ -24,10 +25,11 @@ const COLOR_MAP = {
 };
 
 export default function AIInsight() {
-  const { data: insightData, loading: insightLoading } = useDashboardAPI("/insight");
-  const { data: dashData, loading: dashLoading } = useDashboardAPI("/dashboard");
+  const { data: insightData, loading: insightLoading, error: insightError, refetch } = useDashboardAPI("/insight");
+  const { data: dashData, loading: dashLoading, error: dashError } = useDashboardAPI("/dashboard");
 
   const loading = insightLoading || dashLoading;
+  const error = insightError || dashError;
   const insights = insightData?.insights || [];
   const updatedAt = insightData?.updated_at || "-";
   const todayIncome = dashData?.today?.income || 0;
@@ -51,6 +53,8 @@ export default function AIInsight() {
         <div className="flex items-center justify-center py-8">
           <Spinner />
         </div>
+      ) : error ? (
+        <SectionError error={error} onRetry={refetch} className="py-8" />
       ) : (
         <div className="space-y-3">
           {insights.map((item, i) => {
